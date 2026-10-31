@@ -1,0 +1,9 @@
+{
+  "desc": "食刻 SHIKE 页面索引",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+<view wx:if="{{advice.title}}" class="advice {{theme}} {{compact ? 'compact' : ''}}">
+  <view class="advice-icon">{{icon}}</view>
+  <view class="advice-copy">
+    <view class="advice-title">{{advice.title}}</view>
+    <view class="advice-body">{{advice.body}}</view>
+  </view>
+</view>

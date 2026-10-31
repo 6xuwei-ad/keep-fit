@@ -1,0 +1,260 @@
+page {
+  --canvas: #f3f1e8;
+  --paper: #fffdf7;
+  --ink: #15271f;
+  --muted: #70786f;
+  --line: #deddcf;
+  --green: #1b4b37;
+  --green-deep: #103126;
+  --lime: #d9ef7c;
+  --lime-soft: #eef7c8;
+  --coral: #ed6b4c;
+  --protein: #df795d;
+  --carbs: #d6a23f;
+  --fat: #789d86;
+
+  min-height: 100%;
+  background: #f3f1e8;
+  color: #15271f;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+view,
+text,
+button,
+input,
+image,
+scroll-view {
+  box-sizing: border-box;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 26rpx;
+  line-height: 1;
+  border-radius: 0;
+}
+
+button::after {
+  border: 0;
+}
+
+image {
+  display: block;
+}
+
+.shell {
+  padding: 24rpx 28rpx 48rpx;
+}
+
+.eyebrow {
+  display: block;
+  color: #1b4b37;
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2rpx 4rpx 24rpx;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.brand-logo {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 18rpx;
+  box-shadow: 0 8rpx 20rpx rgba(27, 75, 55, 0.16);
+}
+
+.brand-copy {
+  display: flex;
+  align-items: baseline;
+  margin-left: 14rpx;
+}
+
+.brand-name {
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 39rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+
+.brand-latin {
+  margin-left: 9rpx;
+  color: #8b938a;
+  font-size: 16rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+}
+
+.mode-pill {
+  display: flex;
+  align-items: center;
+  height: 46rpx;
+  padding: 0 18rpx;
+  color: #7d5b1f;
+  border: 1rpx solid rgba(177, 130, 45, 0.22);
+  border-radius: 999rpx;
+  background: rgba(245, 221, 160, 0.5);
+  font-size: 18rpx;
+  font-weight: 600;
+}
+
+.mode-dot {
+  width: 9rpx;
+  height: 9rpx;
+  margin-right: 8rpx;
+  border-radius: 50%;
+  background: #e5a248;
+}
+
+.card {
+  border: 1rpx solid rgba(21, 39, 31, 0.09);
+  border-radius: 36rpx;
+  background: #fffdf7;
+  box-shadow: 0 8rpx 24rpx rgba(21, 39, 31, 0.04);
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin: 44rpx 4rpx 20rpx;
+}
+
+.section-title {
+  margin-top: 8rpx;
+  font-size: 38rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -1rpx;
+}
+
+.section-link {
+  color: #31473b;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.btn {
+  display: flex;
+  height: 86rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 0 30rpx;
+  border: 1rpx solid transparent;
+  border-radius: 999rpx;
+  font-size: 27rpx;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.btn-primary {
+  color: #fbfdf0;
+  background: #1b4b37;
+  box-shadow: 0 12rpx 30rpx rgba(27, 75, 55, 0.18);
+}
+
+.btn-soft {
+  color: #15271f;
+  border-color: rgba(21, 39, 31, 0.14);
+  background: rgba(255, 253, 247, 0.86);
+}
+
+.btn-dark {
+  color: #d9ef7c;
+  background: #15271f;
+}
+
+.btn-small {
+  height: 64rpx;
+  padding: 0 24rpx;
+  font-size: 22rpx;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  color: #31473b;
+  font-size: 23rpx;
+  font-weight: 600;
+}
+
+.muted {
+  color: #70786f;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 80rpx 40rpx;
+  text-align: center;
+}
+
+.empty-icon {
+  display: flex;
+  width: 112rpx;
+  height: 112rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eef7c8;
+  font-size: 48rpx;
+}
+
+.empty-title {
+  margin-top: 26rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.empty-copy {
+  max-width: 520rpx;
+  margin-top: 10rpx;
+  color: #70786f;
+  font-size: 23rpx;
+  line-height: 1.7;
+}
+
+.form-error {
+  margin-top: 14rpx;
+  color: #bf5238;
+  font-size: 22rpx;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fade-up 360ms ease both;
+}

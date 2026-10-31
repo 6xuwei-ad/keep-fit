@@ -1,0 +1,82 @@
+.macro {
+  width: 100%;
+}
+
+.macro-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.macro-label {
+  display: flex;
+  align-items: center;
+  color: #70786f;
+  font-size: 20rpx;
+}
+
+.dot {
+  width: 12rpx;
+  height: 12rpx;
+  margin-right: 10rpx;
+  border-radius: 50%;
+  background: #df795d;
+}
+
+.dot.carbs {
+  background: #d6a23f;
+}
+
+.dot.fat {
+  background: #789d86;
+}
+
+.dot.fiber {
+  background: #8da76b;
+}
+
+.macro-value {
+  color: #15271f;
+  font-size: 21rpx;
+  font-weight: 650;
+}
+
+.unit {
+  margin-left: 2rpx;
+  color: #70786f;
+  font-size: 16rpx;
+  font-weight: 400;
+}
+
+.target {
+  margin-left: 5rpx;
+  color: #969c93;
+  font-size: 16rpx;
+  font-weight: 400;
+}
+
+.macro-track {
+  height: 7rpx;
+  margin-top: 12rpx;
+  overflow: hidden;
+  border-radius: 999rpx;
+  background: rgba(21, 39, 31, 0.08);
+}
+
+.macro-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: #df795d;
+}
+
+.macro-fill.carbs {
+  background: #d6a23f;
+}
+
+.macro-fill.fat {
+  background: #789d86;
+}
+
+.macro-fill.fiber {
+  background: #8da76b;
+}

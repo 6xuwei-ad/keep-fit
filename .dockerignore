@@ -1,0 +1,13 @@
+node_modules
+dist
+data
+docs
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.npm-cache
+.edge-profile*
+shot-*.png
+*.log

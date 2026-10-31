@@ -1,0 +1,537 @@
+.review-page {
+  position: relative;
+  padding: 24rpx 28rpx 240rpx;
+}
+
+.review-head {
+  position: relative;
+  padding: 4rpx 4rpx 20rpx;
+}
+
+.review-title {
+  font-size: 51rpx;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -3rpx;
+}
+
+.review-sub {
+  max-width: 560rpx;
+  margin-top: 14rpx;
+  color: #70786f;
+  font-size: 22rpx;
+  line-height: 1.65;
+}
+
+.confidence-pill {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 10rpx 16rpx;
+  color: #1b4b37;
+  border: 1rpx solid rgba(27, 75, 55, 0.14);
+  border-radius: 18rpx;
+  background: #eef7c8;
+}
+
+.confidence-icon {
+  margin-right: 8rpx;
+  font-size: 24rpx;
+}
+
+.confidence-label {
+  display: block;
+  color: #70786f;
+  font-size: 15rpx;
+  line-height: 1.2;
+}
+
+.confidence-value {
+  display: block;
+  margin-top: 2rpx;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 18rpx;
+  padding: 16rpx 18rpx;
+  color: #6f5420;
+  border: 1rpx solid rgba(202, 155, 61, 0.22);
+  border-radius: 18rpx;
+  background: rgba(247, 231, 190, 0.74);
+  font-size: 19rpx;
+  line-height: 1.55;
+}
+
+.notice-icon {
+  margin-right: 8rpx;
+}
+
+.photo-card {
+  position: relative;
+  height: 440rpx;
+  overflow: hidden;
+  border-radius: 32rpx;
+  background: #f8f5ea;
+  box-shadow: 0 8rpx 22rpx rgba(21, 39, 31, 0.05);
+}
+
+.photo {
+  width: 100%;
+  height: 100%;
+}
+
+.photo-shade {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 240rpx;
+  background: linear-gradient(to top, rgba(10, 25, 18, 0.8), transparent);
+}
+
+.photo-badge {
+  position: absolute;
+  top: 18rpx;
+  left: 18rpx;
+  display: flex;
+  align-items: center;
+  padding: 10rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 253, 247, 0.92);
+  font-size: 17rpx;
+  font-weight: 600;
+}
+
+.photo-dot {
+  width: 11rpx;
+  height: 11rpx;
+  margin-right: 7rpx;
+  border-radius: 50%;
+  background: #6e9b53;
+}
+
+.photo-caption {
+  position: absolute;
+  right: 24rpx;
+  bottom: 20rpx;
+  left: 24rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.photo-meta {
+  color: rgba(255, 253, 247, 0.62);
+  font-size: 17rpx;
+}
+
+.photo-name {
+  margin-top: 4rpx;
+  color: #fffdf7;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 41rpx;
+  font-weight: 600;
+  line-height: 1.18;
+}
+
+.summary-card {
+  margin-top: 18rpx;
+  padding: 26rpx 24rpx 22rpx;
+}
+
+.summary-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.label {
+  color: #70786f;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.summary-kcal {
+  margin-top: 3rpx;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 68rpx;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -3rpx;
+}
+
+.summary-kcal text {
+  margin-left: 5rpx;
+  color: #70786f;
+  font-family: -apple-system, sans-serif;
+  font-size: 18rpx;
+  letter-spacing: 0;
+}
+
+.summary-sub {
+  display: block;
+  margin-top: 7rpx;
+  color: #70786f;
+  font-size: 18rpx;
+}
+
+.quality-score {
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.quality-cap {
+  margin-top: 3rpx;
+  color: #70786f;
+  font-size: 14rpx;
+}
+
+.quality-line {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 18rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 16rpx;
+  background: #f8f5ea;
+}
+
+.quality-label {
+  flex: none;
+  margin-right: 10rpx;
+  color: #1b4b37;
+  font-size: 19rpx;
+  font-weight: 700;
+}
+
+.quality-summary {
+  color: #70786f;
+  font-size: 18rpx;
+  line-height: 1.5;
+}
+
+.summary-macros {
+  display: flex;
+  margin-top: 20rpx;
+}
+
+.summary-macro {
+  flex: 1;
+  margin-right: 14rpx;
+}
+
+.summary-macro:last-child {
+  margin-right: 0;
+}
+
+.meal-type-block {
+  margin-top: 22rpx;
+}
+
+.segmented {
+  display: flex;
+  margin-top: 8rpx;
+  padding: 4rpx;
+  border: 1rpx solid rgba(21, 39, 31, 0.08);
+  border-radius: 14rpx;
+  background: #f8f5ea;
+}
+
+.segment {
+  flex: 1;
+  height: 50rpx;
+  color: #70786f;
+  border-radius: 10rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  line-height: 50rpx;
+  text-align: center;
+}
+
+.segment.active {
+  color: #15271f;
+  background: #fffdf7;
+  box-shadow: 0 2rpx 8rpx rgba(21, 39, 31, 0.08);
+}
+
+.summary-card .btn {
+  margin-top: 20rpx;
+}
+
+.food-head {
+  margin-top: 40rpx;
+}
+
+.food-head-actions {
+  display: flex;
+  align-items: center;
+}
+
+.count-pill {
+  margin-right: 10rpx;
+  padding: 5rpx 14rpx;
+  color: #1b4b37;
+  border: 1rpx solid rgba(27, 75, 55, 0.14);
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 18rpx;
+  font-weight: 700;
+}
+
+.food-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.food-card {
+  margin-bottom: 12rpx;
+  padding: 20rpx;
+}
+
+.food-main {
+  display: flex;
+  align-items: center;
+}
+
+.food-avatar {
+  display: flex;
+  width: 76rpx;
+  height: 76rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  background: #f8f5ea;
+  font-size: 38rpx;
+}
+
+.food-info {
+  min-width: 0;
+  flex: 1;
+  margin-left: 15rpx;
+}
+
+.food-name {
+  overflow: hidden;
+  font-size: 25rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.food-hint {
+  display: block;
+  margin-top: 2rpx;
+  color: #969c93;
+  font-size: 17rpx;
+}
+
+.confidence-track {
+  width: 180rpx;
+  height: 3rpx;
+  margin-top: 8rpx;
+  overflow: hidden;
+  border-radius: 999rpx;
+  background: rgba(21, 39, 31, 0.08);
+}
+
+.confidence-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: rgba(27, 75, 55, 0.55);
+}
+
+.food-kcal {
+  display: flex;
+  align-items: baseline;
+  margin-left: 12rpx;
+}
+
+.food-kcal text:first-child {
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.food-kcal-unit {
+  margin-left: 3rpx;
+  color: #969c93;
+  font-size: 15rpx;
+}
+
+.food-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx dashed rgba(21, 39, 31, 0.1);
+}
+
+.gram-control {
+  display: flex;
+  height: 58rpx;
+  align-items: center;
+  overflow: hidden;
+  border: 1rpx solid #deddcf;
+  border-radius: 14rpx;
+  background: #f8f5ea;
+}
+
+.gram-btn {
+  width: 58rpx;
+  height: 100%;
+  color: #70786f;
+  font-size: 28rpx;
+}
+
+.gram-input-wrap {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  padding: 0 10rpx;
+  border-right: 1rpx solid #deddcf;
+  border-left: 1rpx solid #deddcf;
+  background: #fffdf7;
+}
+
+.gram-input {
+  width: 80rpx;
+  height: 100%;
+  font-size: 23rpx;
+  font-weight: 650;
+  text-align: right;
+}
+
+.gram-unit {
+  margin-left: 2rpx;
+  color: #969c93;
+  font-size: 17rpx;
+}
+
+.remove-btn {
+  color: #a26c5f;
+  font-size: 19rpx;
+}
+
+.food-foot {
+  margin-top: 10rpx;
+}
+
+.food-macros {
+  display: flex;
+  flex-wrap: wrap;
+  color: #70786f;
+  font-size: 17rpx;
+}
+
+.food-macros text {
+  margin-right: 14rpx;
+  line-height: 1.9;
+}
+
+.preset-row {
+  display: flex;
+  margin-top: 8rpx;
+}
+
+.preset {
+  flex: 1;
+  height: 42rpx;
+  margin-right: 6rpx;
+  color: #70786f;
+  border: 1rpx solid transparent;
+  border-radius: 999rpx;
+  font-size: 17rpx;
+  line-height: 42rpx;
+  text-align: center;
+}
+
+.preset:last-child {
+  margin-right: 0;
+}
+
+.preset.active {
+  color: #1b4b37;
+  border-color: rgba(27, 75, 55, 0.14);
+  background: #eef7c8;
+}
+
+.empty-box {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 46rpx 30rpx;
+  text-align: center;
+}
+
+.advice-head {
+  margin-top: 38rpx;
+}
+
+.advice-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.advice-item {
+  margin-bottom: 10rpx;
+}
+
+.disclaimer {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 18rpx;
+  padding: 0 6rpx;
+  color: #969c93;
+  font-size: 17rpx;
+  line-height: 1.6;
+}
+
+.disclaimer text:first-child {
+  margin-right: 5rpx;
+}
+
+.save-bar {
+  position: fixed;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid rgba(21, 39, 31, 0.09);
+  background: rgba(255, 253, 247, 0.96);
+  box-shadow: 0 -10rpx 30rpx rgba(21, 39, 31, 0.07);
+}
+
+.save-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.save-info text:first-child {
+  color: #70786f;
+  font-size: 17rpx;
+}
+
+.save-kcal {
+  margin-top: 2rpx;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 31rpx;
+  font-weight: 600;
+}
+
+.save-button {
+  width: 270rpx;
+}

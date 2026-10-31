@@ -1,0 +1,110 @@
+<view class="journal-page">
+  <view class="page-head">
+    <text class="eyebrow">YOUR FOOD DIARY</text>
+    <view class="page-title">每一餐，<br />都有迹可循。</view>
+    <view class="page-sub">回看吃过的食物与份量，找到真正适合自己的节奏。</view>
+    <button class="btn btn-primary record-btn" bindtap="onRecord">＋ 记录一餐</button>
+  </view>
+
+  <view class="date-bar">
+    <button class="date-arrow" bindtap="goPrev">‹</button>
+    <view class="date-center">
+      <text class="date-friendly">{{dateText}}</text>
+      <text class="date-full">{{fullDate}}</text>
+    </view>
+    <button class="date-arrow {{nextDisabled ? 'disabled' : ''}}" bindtap="goNext">›</button>
+    <button wx:if="{{!isToday}}" class="today-btn" bindtap="goToday">今天</button>
+  </view>
+
+  <view wx:if="{{showLoading}}" class="loading-card">正在读取这一天…</view>
+
+  <view wx:if="{{summary}}" class="card journal-summary">
+    <view class="summary-top">
+      <view>
+        <text class="label">已摄入</text>
+        <view class="journal-kcal">{{summary.totals.kcal}}<text>kcal</text></view>
+        <text class="summary-sub">目标 {{summary.targets.kcal}} kcal · {{summary.remaining.kcal >= 0 ? '剩余 ' + summary.remaining.kcal : '超出 ' + (0 - summary.remaining.kcal)}} kcal</text>
+      </view>
+      <progress-ring percent="{{summary.caloriePercent}}" size="{{140}}" stroke="{{10}}" tone="lime">
+        <text class="ring-num">{{summary.caloriePercent}}<text class="ring-unit">%</text></text>
+        <text class="ring-cap">目标完成</text>
+      </progress-ring>
+    </view>
+
+    <view class="journal-macros">
+      <view class="journal-macro">
+        <macro-bar label="蛋白质" value="{{summary.totals.protein}}" target="{{summary.targets.protein}}" tone="protein"></macro-bar>
+      </view>
+      <view class="journal-macro">
+        <macro-bar label="碳水" value="{{summary.totals.carbs}}" target="{{summary.targets.carbs}}" tone="carbs"></macro-bar>
+      </view>
+      <view class="journal-macro">
+        <macro-bar label="脂肪" value="{{summary.totals.fat}}" target="{{summary.targets.fat}}" tone="fat"></macro-bar>
+      </view>
+      <view class="journal-macro">
+        <macro-bar label="纤维" value="{{summary.totals.fiber}}" target="{{summary.targets.fiber}}" tone="fiber"></macro-bar>
+      </view>
+    </view>
+
+    <view class="journal-stats">
+      <view><text>餐次</text><text class="stat-value">{{mealCount}}</text><text>餐</text></view>
+      <view><text>目标</text><text class="stat-value">{{goalLabel}}</text><text>模式</text></view>
+    </view>
+  </view>
+
+  <view class="section-head meals-head">
+    <view>
+      <text class="eyebrow">MEALS</text>
+      <view class="section-title">{{isToday ? '今天吃了什么' : dateText + '吃了什么'}}</view>
+    </view>
+    <text class="count-pill">{{mealCount}} 餐</text>
+  </view>
+
+  <view wx:if="{{showEmpty}}" class="card empty">
+    <view class="empty-icon">◎</view>
+    <text class="empty-title">{{isToday ? '今天还没有记录' : '这一天还没有记录'}}</text>
+    <text class="empty-copy">拍下下一餐，让今天的热量和营养有据可循。</text>
+    <button class="btn btn-primary btn-small" bindtap="onRecord">记录第一餐</button>
+  </view>
+
+  <view class="meal-list">
+    <view wx:for="{{meals}}" wx:key="id" class="card meal-card">
+      <view class="meal-visual">
+        <image wx:if="{{item.image}}" class="meal-image" src="{{item.image}}" mode="aspectFill"></image>
+        <view wx:else class="meal-emoji">{{item.emoji}}</view>
+        <text class="meal-type">{{item.typeLabel}}</text>
+      </view>
+      <view class="meal-copy">
+        <text class="meal-time">{{item.time}} · {{item.itemCount}} 种食材</text>
+        <text class="meal-name">{{item.name}}</text>
+        <text class="meal-items">{{item.itemsText}}</text>
+        <view class="meal-macros">
+          <text>{{item.protein}}g 蛋白</text>
+          <text>{{item.carbs}}g 碳水</text>
+          <text>{{item.fat}}g 脂肪</text>
+        </view>
+      </view>
+      <view class="meal-side">
+        <text class="meal-kcal">{{item.kcal}}</text>
+        <text class="meal-kcal-unit">kcal</text>
+        <button class="delete-btn" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onDelete">删除</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{meals.length > 0}}" class="record-more" bindtap="onRecord">＋ 再记一餐</view>
+
+  <view wx:if="{{advice.length > 0}}" class="daily-advice">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">DAILY NOTES</text>
+        <view class="section-title">今天的建议</view>
+      </view>
+    </view>
+    <view wx:for="{{advice}}" wx:key="kind" class="advice-item">
+      <advice-card advice="{{item}}" theme="light"></advice-card>
+    </view>
+  </view>
+
+  <view class="footer-note">热量为估算值，适合观察趋势，不代替医学或营养处方。</view>
+</view>

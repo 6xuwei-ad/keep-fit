@@ -1,0 +1,317 @@
+.goals-page {
+  padding: 26rpx 28rpx 60rpx;
+}
+
+.page-head {
+  position: relative;
+  padding: 4rpx 4rpx 24rpx;
+}
+
+.page-title {
+  margin-top: 10rpx;
+  font-size: 60rpx;
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -4rpx;
+}
+
+.page-sub {
+  max-width: 560rpx;
+  margin-top: 14rpx;
+  color: #70786f;
+  font-size: 22rpx;
+  line-height: 1.65;
+}
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 18rpx;
+  padding: 8rpx 16rpx;
+  color: #1b4b37;
+  border: 1rpx solid rgba(27, 75, 55, 0.14);
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 18rpx;
+  font-weight: 600;
+}
+
+.account-dot {
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: 7rpx;
+  border-radius: 50%;
+  background: #6e9b53;
+}
+
+.profile-card,
+.goal-card,
+.targets-card,
+.info-card {
+  margin-top: 16rpx;
+  padding: 26rpx 24rpx;
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.avatar {
+  display: flex;
+  width: 76rpx;
+  height: 76rpx;
+  align-items: center;
+  justify-content: center;
+  color: #1b4b37;
+  border-radius: 50%;
+  background: #d9ef7c;
+  font-family: "Songti SC", serif;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.field-label {
+  margin-top: 24rpx;
+  color: #70786f;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.name-input {
+  height: 82rpx;
+  margin-top: 7rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 18rpx;
+  background: #f8f5ea;
+  font-size: 25rpx;
+}
+
+.goal-options {
+  margin-top: 18rpx;
+}
+
+.goal-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  margin-bottom: 10rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 24rpx;
+  background: #f8f5ea;
+}
+
+.goal-option.active {
+  border-color: #1b4b37;
+  background: linear-gradient(135deg, #f7fbe8, #eef7c8);
+  box-shadow: inset 0 0 0 1rpx #1b4b37;
+}
+
+.goal-icon {
+  display: flex;
+  width: 66rpx;
+  height: 66rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15rpx;
+  color: #1b4b37;
+  border-radius: 20rpx;
+  background: #fffdf7;
+  font-size: 32rpx;
+}
+
+.goal-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.goal-name {
+  font-size: 27rpx;
+  font-weight: 700;
+}
+
+.goal-desc {
+  margin-top: 3rpx;
+  color: #70786f;
+  font-size: 18rpx;
+  line-height: 1.5;
+}
+
+.goal-kcal {
+  margin-top: 7rpx;
+  color: #1b4b37;
+  font-size: 17rpx;
+  font-weight: 600;
+}
+
+.goal-check {
+  display: flex;
+  width: 38rpx;
+  height: 38rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-left: 10rpx;
+  color: #1b4b37;
+  border: 1rpx solid rgba(21, 39, 31, 0.16);
+  border-radius: 50%;
+  font-size: 22rpx;
+}
+
+.goal-option.active .goal-check {
+  border-color: #1b4b37;
+  background: #d9ef7c;
+}
+
+.macro-percent {
+  color: #969c93;
+  font-size: 17rpx;
+}
+
+.targets-intro {
+  margin-top: 12rpx;
+  color: #70786f;
+  font-size: 19rpx;
+}
+
+.targets-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 18rpx;
+}
+
+.target-field {
+  width: 50%;
+  margin-bottom: 16rpx;
+  padding-right: 8rpx;
+}
+
+.target-field:nth-child(even) {
+  padding-right: 0;
+  padding-left: 8rpx;
+}
+
+.target-label {
+  display: block;
+  color: #70786f;
+  font-size: 18rpx;
+}
+
+.target-input-wrap {
+  display: flex;
+  height: 74rpx;
+  align-items: center;
+  margin-top: 5rpx;
+  padding: 0 16rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 16rpx;
+  background: #f8f5ea;
+}
+
+.target-input {
+  flex: 1;
+  min-width: 0;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 29rpx;
+  font-weight: 600;
+}
+
+.target-unit {
+  margin-left: 5rpx;
+  color: #969c93;
+  font-size: 16rpx;
+}
+
+.targets-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid rgba(21, 39, 31, 0.08);
+}
+
+.budget-card {
+  margin-top: 16rpx;
+  padding: 28rpx 26rpx 22rpx;
+  border-radius: 36rpx;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(217, 239, 124, 0.16), transparent 280rpx),
+    #103126;
+  box-shadow: 0 8rpx 22rpx rgba(16, 49, 38, 0.16);
+}
+
+.eyebrow-light {
+  color: #d9ef7c;
+}
+
+.budget-kcal {
+  margin-top: 16rpx;
+  color: #d9ef7c;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 72rpx;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -3rpx;
+}
+
+.budget-kcal text {
+  margin-left: 6rpx;
+  color: rgba(255, 253, 247, 0.48);
+  font-family: -apple-system, sans-serif;
+  font-size: 18rpx;
+  letter-spacing: 0;
+}
+
+.budget-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13rpx 0;
+  color: rgba(255, 253, 247, 0.62);
+  border-bottom: 1rpx solid rgba(255, 255, 255, 0.09);
+  font-size: 19rpx;
+}
+
+.budget-line text:last-child {
+  color: #fffdf7;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.budget-foot {
+  padding-top: 16rpx;
+  color: #d9ef7c;
+  font-size: 17rpx;
+}
+
+.info-card {
+  background: rgba(255, 253, 247, 0.74);
+}
+
+.info-title {
+  color: #15271f;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.info-body {
+  margin-top: 8rpx;
+  color: #70786f;
+  font-size: 19rpx;
+  line-height: 1.65;
+}
+
+.info-version {
+  margin-top: 12rpx;
+  color: #969c93;
+  font-size: 16rpx;
+  letter-spacing: 1rpx;
+}

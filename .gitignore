@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+data/*.db
+data/*.db-*
+data/uploads/
+.npm-cache/
+*.log
+.DS_Store
+project.private.config.json
+miniprogram_npm/
+.idea/
+.vscode/

@@ -1,0 +1,177 @@
+<view class="review-page" wx:if="{{!loading}}">
+  <view class="review-head">
+    <text class="eyebrow">ANALYSIS / 02</text>
+    <view class="review-title">确认份量，</view>
+    <view class="review-title">剩下的交给食刻。</view>
+    <view class="review-sub">识别到 {{items.length}} 种食材。把克数调成实际吃下的量，热量会实时重算。</view>
+    <view class="confidence-pill">
+      <text class="confidence-icon">◎</text>
+      <view>
+        <text class="confidence-label">平均置信度</text>
+        <text class="confidence-value">{{avgConfidence}}%</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{notice}}" class="notice">
+    <text class="notice-icon">ⓘ</text>
+    <text>{{notice}}</text>
+  </view>
+
+  <view class="photo-card">
+    <image class="photo" src="{{imageUrl}}" mode="aspectFill"></image>
+    <view class="photo-shade"></view>
+    <view class="photo-badge">
+      <text class="photo-dot"></text>
+      {{provider == 'demo' ? '演示识别' : '视觉识别完成'}}
+    </view>
+    <view class="photo-caption">
+      <text class="photo-meta">{{items.length}} 种食材 · {{avgConfidence}}% 置信度</text>
+      <text class="photo-name">{{dishName}}</text>
+    </view>
+  </view>
+
+  <view class="card summary-card">
+    <view class="summary-top">
+      <view class="summary-main">
+        <text class="label">这一餐约</text>
+        <view class="summary-kcal">{{totals.kcal}}<text>kcal</text></view>
+        <text class="summary-sub">占今日目标 {{mealPercent}}%</text>
+      </view>
+      <progress-ring percent="{{quality.score}}" size="{{104}}" stroke="{{8}}" tone="green">
+        <text class="quality-score">{{quality.score}}</text>
+        <text class="quality-cap">均衡度</text>
+      </progress-ring>
+    </view>
+
+    <view class="quality-line">
+      <text class="quality-label">{{quality.label}}</text>
+      <text class="quality-summary">{{quality.summary}}</text>
+    </view>
+
+    <view class="summary-macros">
+      <view class="summary-macro">
+        <macro-bar label="蛋白质" value="{{totals.protein}}" target="{{0}}" tone="protein"></macro-bar>
+      </view>
+      <view class="summary-macro">
+        <macro-bar label="碳水" value="{{totals.carbs}}" target="{{0}}" tone="carbs"></macro-bar>
+      </view>
+      <view class="summary-macro">
+        <macro-bar label="脂肪" value="{{totals.fat}}" target="{{0}}" tone="fat"></macro-bar>
+      </view>
+    </view>
+
+    <view class="meal-type-block">
+      <text class="label">这是哪一餐？</text>
+      <view class="segmented">
+        <view
+          wx:for="{{mealTypeOptions}}"
+          wx:key="id"
+          class="segment {{item.active ? 'active' : ''}}"
+          data-type="{{item.id}}"
+          bindtap="onMealType"
+        >{{item.label}}</view>
+      </view>
+    </view>
+
+    <button class="btn btn-primary btn-full" bindtap="onSave" disabled="{{saving}}">
+      {{saving ? '正在保存…' : '保存到今日饮食'}}
+    </button>
+  </view>
+
+  <view class="section-head food-head">
+    <view>
+      <text class="eyebrow">PORTIONS</text>
+      <view class="section-title">识别到的食物</view>
+    </view>
+    <view class="food-head-actions">
+      <text class="count-pill">{{items.length}} 种</text>
+      <button class="btn btn-soft btn-small" bindtap="onAddFood">＋ 添加食物</button>
+    </view>
+  </view>
+
+  <view wx:if="{{items.length == 0}}" class="card empty-box">
+    <text class="empty-title">食材都被移除了</text>
+    <text class="empty-copy">添加一种食物，或返回重新识别。</text>
+    <button class="btn btn-primary btn-small" bindtap="onAddFood">添加食物</button>
+  </view>
+
+  <view wx:else class="food-list">
+    <view wx:for="{{items}}" wx:key="id" class="card food-card">
+      <view class="food-main">
+        <view class="food-avatar">{{item.emoji}}</view>
+        <view class="food-info">
+          <view class="food-name">{{item.name}}</view>
+          <text class="food-hint">{{item.portionHint}} · 置信度 {{item.confidencePct}}%</text>
+          <view class="confidence-track">
+            <view class="confidence-fill" style="width: {{item.confidencePct}}%;"></view>
+          </view>
+        </view>
+        <view class="food-kcal">
+          <text>{{item.kcalText}}</text>
+          <text class="food-kcal-unit">kcal</text>
+        </view>
+      </view>
+
+      <view class="food-control-row">
+        <view class="gram-control">
+          <button class="gram-btn" data-index="{{index}}" data-delta="{{-10}}" bindtap="onStep">−</button>
+          <view class="gram-input-wrap">
+            <input
+              class="gram-input"
+              type="number"
+              value="{{item.grams}}"
+              data-index="{{index}}"
+              bindinput="onGramInput"
+              bindblur="onGramBlur"
+            />
+            <text class="gram-unit">g</text>
+          </view>
+          <button class="gram-btn" data-index="{{index}}" data-delta="{{10}}" bindtap="onStep">＋</button>
+        </view>
+        <button class="remove-btn" data-index="{{index}}" bindtap="onRemove">移除</button>
+      </view>
+
+      <view class="food-foot">
+        <view class="food-macros">
+          <text>蛋白 {{item.proteinText}}g</text>
+          <text>碳水 {{item.carbsText}}g</text>
+          <text>脂肪 {{item.fatText}}g</text>
+          <text>纤维 {{item.fiberText}}g</text>
+        </view>
+        <view class="preset-row">
+          <button class="preset" data-index="{{index}}" data-factor="{{0.8}}" bindtap="onPreset">少一点</button>
+          <button class="preset active" data-index="{{index}}" data-factor="{{1}}" bindtap="onPreset">标准 {{item.grams}}g</button>
+          <button class="preset" data-index="{{index}}" data-factor="{{1.2}}" bindtap="onPreset">多一点</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-head advice-head">
+    <view>
+      <text class="eyebrow">COACH NOTES</text>
+      <view class="section-title">这一餐，怎么吃得更好</view>
+    </view>
+  </view>
+  <view class="advice-list">
+    <view wx:for="{{tips}}" wx:key="kind" class="advice-item">
+      <advice-card advice="{{item}}" theme="light"></advice-card>
+    </view>
+  </view>
+
+  <view class="disclaimer">
+    <text>ⓘ</text>
+    <text>热量与营养值为估算，AI 可能遗漏酱汁、烹调油或少量食材；特殊饮食需求请以专业建议为准。</text>
+  </view>
+
+  <view class="save-bar">
+    <view class="save-info">
+      <text>这一餐</text>
+      <text class="save-kcal">{{totals.kcal}} kcal</text>
+    </view>
+    <button class="btn btn-primary save-button" bindtap="onSave" disabled="{{saving}}">
+      {{saving ? '保存中…' : '保存记录'}}
+    </button>
+  </view>
+</view>

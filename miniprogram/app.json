@@ -1,0 +1,57 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/journal/index",
+    "pages/goals/index",
+    "pages/review/index",
+    "pages/food-search/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "食刻",
+    "navigationBarBackgroundColor": "#F3F1E8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F3F1E8",
+    "backgroundTextStyle": "dark",
+    "backgroundColorTop": "#F3F1E8",
+    "backgroundColorBottom": "#F3F1E8"
+  },
+  "tabBar": {
+    "color": "#8D948D",
+    "selectedColor": "#1B4B37",
+    "backgroundColor": "#FFFDF7",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "今日",
+        "iconPath": "images/home.png",
+        "selectedIconPath": "images/home-active.png"
+      },
+      {
+        "pagePath": "pages/journal/index",
+        "text": "日记",
+        "iconPath": "images/journal.png",
+        "selectedIconPath": "images/journal-active.png"
+      },
+      {
+        "pagePath": "pages/goals/index",
+        "text": "目标",
+        "iconPath": "images/goals.png",
+        "selectedIconPath": "images/goals-active.png"
+      }
+    ]
+  },
+  "usingComponents": {
+    "progress-ring": "/components/progress-ring/index",
+    "macro-bar": "/components/macro-bar/index",
+    "advice-card": "/components/advice-card/index"
+  },
+  "networkTimeout": {
+    "request": 20000,
+    "uploadFile": 60000,
+    "downloadFile": 30000
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

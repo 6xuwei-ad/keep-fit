@@ -1,0 +1,210 @@
+<view class="shell">
+  <view class="topbar">
+    <view class="brand">
+      <image class="brand-logo" src="/images/logo.png" mode="aspectFill"></image>
+      <view class="brand-copy">
+        <text class="brand-name">食刻</text>
+        <text class="brand-latin">SHIKE</text>
+      </view>
+    </view>
+    <view wx:if="{{!meta.visionEnabled}}" class="mode-pill">
+      <text class="mode-dot"></text>
+      演示模式
+    </view>
+  </view>
+
+  <view class="hero fade-up">
+    <view class="hero-eyebrow">
+      <text class="spark">✦</text>
+      AI 视觉营养分析
+    </view>
+    <view class="greeting">{{greeting}}，{{profile.name || '食刻用户'}}</view>
+    <view class="hero-title">
+      拍一张，
+      <view class="hero-title-line"><text class="accent">吃明白</text>。</view>
+    </view>
+    <view class="hero-copy">
+      不用查食物表，也不用猜份量。识别盘中食物，你确认克数，热量和下一步建议就都有了。
+    </view>
+
+    <view class="hero-actions">
+      <button class="btn btn-primary hero-btn" bindtap="onCamera" hover-class="btn-hover">
+        <text class="btn-icon">◎</text>
+        拍照识别
+      </button>
+      <button class="btn btn-soft hero-btn" bindtap="onAlbum" hover-class="btn-hover">
+        <text class="btn-icon">▧</text>
+        从相册选择
+      </button>
+    </view>
+    <view class="hero-sub">
+      <view class="hero-link" bindtap="onDemo">
+        先看看示例餐盘 <text class="chev">↗</text>
+      </view>
+      <text class="privacy">照片仅用于本次分析</text>
+    </view>
+
+    <view class="hero-visual">
+      <view class="hero-disc"></view>
+      <image class="hero-image" src="/images/demo-bowl.jpg" mode="aspectFill"></image>
+      <view class="float float-kcal">
+        <text class="float-big">377</text>
+        <text class="float-small">kcal</text>
+      </view>
+      <view class="float float-ai">
+        <text class="float-dot"></text>
+        AI 已识别
+      </view>
+      <view class="float float-protein">
+        <text class="leaf">◌</text>
+        <view>
+          <text class="float-big">31g</text>
+          <text class="float-small">蛋白质</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card today-card fade-up">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">TODAY</text>
+        <view class="section-title">今日概览</view>
+      </view>
+      <navigator class="section-link" url="/pages/journal/index" open-type="switchTab">查看日记 ›</navigator>
+    </view>
+
+    <view class="today-main">
+      <view class="today-numbers">
+        <text class="label">已摄入</text>
+        <view class="big-num">{{loading ? '—' : summary.totals.kcal}}<text class="big-unit">kcal</text></view>
+        <view class="sub-line {{isOver ? 'over' : ''}}">
+          {{loading ? '正在读取今天的记录…' : (isOver ? '比目标多 ' + remainingText + ' kcal' : '目标 ' + summary.targets.kcal + ' kcal · 还可以吃 ' + remainingText + ' kcal')}}
+        </view>
+        <view class="meta-row">
+          <text>{{dateText}}</text>
+          <text>·</text>
+          <text>{{mealCount}} 餐记录</text>
+          <text class="goal-chip">{{goalLabel}}</text>
+        </view>
+      </view>
+
+      <progress-ring class="today-ring" percent="{{summary.caloriePercent}}" size="{{150}}" stroke="{{10}}" tone="lime">
+        <text class="ring-num">{{summary.caloriePercent}}<text class="ring-unit">%</text></text>
+        <text class="ring-cap">今日目标</text>
+      </progress-ring>
+    </view>
+
+    <view class="macro-list">
+      <view class="macro-col">
+        <macro-bar label="蛋白质" value="{{summary.totals.protein}}" target="{{summary.targets.protein}}" tone="protein"></macro-bar>
+      </view>
+      <view class="macro-col">
+        <macro-bar label="碳水" value="{{summary.totals.carbs}}" target="{{summary.targets.carbs}}" tone="carbs"></macro-bar>
+      </view>
+      <view class="macro-col">
+        <macro-bar label="脂肪" value="{{summary.totals.fat}}" target="{{summary.targets.fat}}" tone="fat"></macro-bar>
+      </view>
+    </view>
+
+    <view class="today-foot">
+      <text class="today-note">{{todayNote}}</text>
+      <button class="btn btn-dark btn-small" bindtap="onCamera">再记一餐</button>
+    </view>
+  </view>
+
+  <view class="advice-panel fade-up">
+    <view class="advice-head">
+      <view>
+        <text class="eyebrow eyebrow-light">GENTLE COACH</text>
+        <view class="section-title light">今天的小建议</view>
+      </view>
+      <view class="coach-mark">✦</view>
+    </view>
+    <view class="advice-list">
+      <view wx:for="{{homeAdvice}}" wx:key="kind" class="advice-item">
+        <advice-card advice="{{item}}" theme="dark" compact="{{true}}"></advice-card>
+      </view>
+    </view>
+    <view wx:if="{{!meta.visionEnabled}}" class="demo-note">
+      <text class="demo-icon">◉</text>
+      <text>当前是演示识别。配置服务端 VISION_API_KEY 后，真实照片会被视觉模型分析。</text>
+    </view>
+  </view>
+
+  <view wx:if="{{recent.length > 0}}">
+    <view class="section-head">
+      <view>
+        <text class="eyebrow">RECENT PLATES</text>
+        <view class="section-title">最近记录</view>
+      </view>
+      <navigator class="section-link" url="/pages/journal/index" open-type="switchTab">全部记录 ›</navigator>
+    </view>
+    <view class="recent-list">
+      <navigator
+        wx:for="{{recent}}"
+        wx:key="id"
+        class="recent-card"
+        url="/pages/journal/index"
+        open-type="switchTab"
+      >
+        <view class="recent-image-wrap">
+          <image wx:if="{{item.image}}" class="recent-image" src="{{item.image}}" mode="aspectFill"></image>
+          <view wx:else class="recent-emoji">{{item.emoji}}</view>
+          <text class="recent-type">{{item.typeLabel}}</text>
+        </view>
+        <view class="recent-copy">
+          <text class="recent-time">{{item.time}}</text>
+          <text class="recent-name">{{item.name}}</text>
+          <text class="recent-meta">{{item.kcal}} kcal · 蛋白 {{item.protein}}g</text>
+        </view>
+        <text class="recent-arrow">↗</text>
+      </navigator>
+    </view>
+  </view>
+
+  <view wx:else class="starter-card">
+    <view class="starter-head">
+      <view>
+        <text class="eyebrow">HOW IT WORKS</text>
+        <view class="section-title">三步，吃得更明白</view>
+      </view>
+    </view>
+    <view class="starter-step">
+      <text class="step-index">01</text>
+      <view class="step-copy">
+        <text class="step-title">拍下这一餐</text>
+        <text class="step-body">俯拍整盘，光线充足。AI 会拆解主食、蛋白质与蔬菜。</text>
+      </view>
+    </view>
+    <view class="starter-step">
+      <text class="step-index">02</text>
+      <view class="step-copy">
+        <text class="step-title">确认每种克数</text>
+        <text class="step-body">按实际吃下的份量微调，热量和营养值会立刻重算。</text>
+      </view>
+    </view>
+    <view class="starter-step">
+      <text class="step-index">03</text>
+      <view class="step-copy">
+        <text class="step-title">收下这一餐的建议</text>
+        <text class="step-body">结合每日目标，告诉你缺什么、下一口怎么吃。</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="photo-tips">
+    <view class="tips-head">
+      <text class="tips-icon">◎</text>
+      <view>
+        <text class="tips-title">拍得更准的小技巧</text>
+        <text class="tips-sub">清晰的画面能显著提高识别准确度</text>
+      </view>
+    </view>
+    <view class="tips-row">
+      <text>01 从正上方拍全整盘</text>
+      <text>02 避开逆光和重阴影</text>
+      <text>03 让餐盘占满画面</text>
+    </view>
+  </view>
+</view>

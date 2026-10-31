@@ -1,0 +1,121 @@
+.search-page {
+  padding: 22rpx 28rpx 50rpx;
+}
+
+.search-box {
+  display: flex;
+  height: 90rpx;
+  align-items: center;
+  padding: 0 22rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 22rpx;
+  background: #fffdf7;
+}
+
+.search-icon {
+  margin-right: 10rpx;
+  color: #70786f;
+  font-size: 34rpx;
+}
+
+.search-input {
+  flex: 1;
+  height: 100%;
+  font-size: 25rpx;
+}
+
+.clear-btn {
+  display: flex;
+  width: 40rpx;
+  height: 40rpx;
+  align-items: center;
+  justify-content: center;
+  color: #70786f;
+  border-radius: 50%;
+  background: rgba(21, 39, 31, 0.06);
+  font-size: 28rpx;
+}
+
+.search-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24rpx 4rpx 10rpx;
+  color: #969c93;
+  font-size: 17rpx;
+}
+
+.state {
+  padding: 70rpx 20rpx;
+  color: #70786f;
+  font-size: 22rpx;
+  text-align: center;
+}
+
+.state.error {
+  color: #bf5238;
+}
+
+.food-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.food-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 10rpx;
+  border-bottom: 1rpx solid rgba(21, 39, 31, 0.07);
+}
+
+.food-emoji {
+  display: flex;
+  width: 78rpx;
+  height: 78rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  background: #f8f5ea;
+  font-size: 38rpx;
+}
+
+.food-info {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  margin-left: 16rpx;
+}
+
+.food-name {
+  font-size: 24rpx;
+  font-weight: 650;
+}
+
+.food-sub {
+  margin-top: 3rpx;
+  color: #969c93;
+  font-size: 17rpx;
+}
+
+.add-btn {
+  display: flex;
+  width: 54rpx;
+  height: 54rpx;
+  align-items: center;
+  justify-content: center;
+  color: #1b4b37;
+  border: 1rpx solid rgba(27, 75, 55, 0.14);
+  border-radius: 50%;
+  background: #eef7c8;
+  font-size: 28rpx;
+}
+
+.search-foot {
+  margin-top: 30rpx;
+  color: #969c93;
+  font-size: 17rpx;
+  line-height: 1.6;
+  text-align: center;
+}

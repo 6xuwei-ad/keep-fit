@@ -1,0 +1,36 @@
+<view class="search-page">
+  <view class="search-box">
+    <text class="search-icon">⌕</text>
+    <input
+      class="search-input"
+      value="{{query}}"
+      focus="{{true}}"
+      placeholder="搜索米饭、鸡胸肉、西兰花…"
+      bindinput="onInput"
+      confirm-type="search"
+    />
+    <view wx:if="{{query}}" class="clear-btn" bindtap="onClear">×</view>
+  </view>
+
+  <view class="search-meta">
+    <text>{{query ? '搜索“' + query + '”' : '常用食材'}}</text>
+    <text>营养值按每 100g</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="state">正在查找…</view>
+  <view wx:elif="{{error}}" class="state error">{{error}}</view>
+  <view wx:elif="{{foods.length == 0}}" class="state">没有找到，换个关键词试试</view>
+
+  <view wx:else class="food-list">
+    <view wx:for="{{foods}}" wx:key="id" class="food-item" data-index="{{index}}" bindtap="onAdd">
+      <view class="food-emoji">{{item.emoji}}</view>
+      <view class="food-info">
+        <text class="food-name">{{item.name}}</text>
+        <text class="food-sub">{{item.categoryLabel}} · {{item.kcal}} kcal / 100g</text>
+      </view>
+      <view class="add-btn">＋</view>
+    </view>
+  </view>
+
+  <view class="search-foot">每 100g 营养值来自内置食物库，实际烹饪方式会影响结果。</view>
+</view>

@@ -1,0 +1,15 @@
+<view class="macro">
+  <view class="macro-head">
+    <view class="macro-label">
+      <text class="dot {{tone}}"></text>
+      <text>{{label}}</text>
+    </view>
+    <view class="macro-value">
+      {{valueText}}<text class="unit">{{unit}}</text>
+      <text wx:if="{{targetText}}" class="target"> / {{targetText}}{{unit}}</text>
+    </view>
+  </view>
+  <view class="macro-track">
+    <view class="macro-fill {{tone}}" style="width: {{pct}}%;"></view>
+  </view>
+</view>

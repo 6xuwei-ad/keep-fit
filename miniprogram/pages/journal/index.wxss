@@ -1,0 +1,344 @@
+.journal-page {
+  padding: 26rpx 28rpx 60rpx;
+}
+
+.page-head {
+  position: relative;
+  padding: 4rpx 4rpx 24rpx;
+}
+
+.page-title {
+  margin-top: 10rpx;
+  font-size: 60rpx;
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -4rpx;
+}
+
+.page-sub {
+  max-width: 540rpx;
+  margin-top: 14rpx;
+  color: #70786f;
+  font-size: 22rpx;
+  line-height: 1.65;
+}
+
+.record-btn {
+  position: absolute;
+  right: 0;
+  bottom: 26rpx;
+  height: 64rpx;
+  padding: 0 22rpx;
+  font-size: 21rpx;
+}
+
+.date-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18rpx;
+  padding: 8rpx;
+  border: 1rpx solid rgba(21, 39, 31, 0.09);
+  border-radius: 999rpx;
+  background: rgba(255, 253, 247, 0.78);
+}
+
+.date-arrow {
+  width: 58rpx;
+  height: 58rpx;
+  color: #31473b;
+  border-radius: 50%;
+  font-size: 36rpx;
+  line-height: 58rpx;
+  text-align: center;
+}
+
+.date-arrow.disabled {
+  color: #c7cbc4;
+}
+
+.date-center {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.date-friendly {
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.date-full {
+  margin-left: 8rpx;
+  color: #70786f;
+  font-size: 18rpx;
+}
+
+.today-btn {
+  height: 48rpx;
+  padding: 0 18rpx;
+  color: #1b4b37;
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 18rpx;
+  font-weight: 600;
+  line-height: 48rpx;
+}
+
+.loading-card {
+  padding: 60rpx;
+  color: #70786f;
+  text-align: center;
+}
+
+.journal-summary {
+  padding: 26rpx 24rpx 22rpx;
+}
+
+.summary-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  color: #70786f;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.journal-kcal {
+  margin-top: 2rpx;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 66rpx;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -3rpx;
+}
+
+.journal-kcal text {
+  margin-left: 5rpx;
+  color: #70786f;
+  font-family: -apple-system, sans-serif;
+  font-size: 18rpx;
+  letter-spacing: 0;
+}
+
+.summary-sub {
+  display: block;
+  margin-top: 7rpx;
+  color: #70786f;
+  font-size: 18rpx;
+}
+
+.ring-num {
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 38rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ring-unit {
+  color: #70786f;
+  font-size: 17rpx;
+}
+
+.ring-cap {
+  margin-top: 4rpx;
+  color: #8d948d;
+  font-size: 14rpx;
+}
+
+.journal-macros {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid rgba(21, 39, 31, 0.08);
+}
+
+.journal-macro {
+  width: 50%;
+  margin-bottom: 18rpx;
+  padding-right: 18rpx;
+}
+
+.journal-macro:nth-child(even) {
+  padding-right: 0;
+  padding-left: 18rpx;
+}
+
+.journal-stats {
+  display: flex;
+  padding-top: 6rpx;
+  border-top: 1rpx solid rgba(21, 39, 31, 0.08);
+}
+
+.journal-stats > view {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: center;
+  color: #70786f;
+  font-size: 17rpx;
+}
+
+.stat-value {
+  margin: 0 5rpx;
+  color: #15271f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.meals-head {
+  margin-top: 34rpx;
+}
+
+.count-pill {
+  padding: 5rpx 14rpx;
+  color: #1b4b37;
+  border: 1rpx solid rgba(27, 75, 55, 0.14);
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 18rpx;
+  font-weight: 700;
+}
+
+.meal-card {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+  padding: 12rpx;
+}
+
+.meal-visual {
+  position: relative;
+  width: 142rpx;
+  height: 142rpx;
+  flex: none;
+  overflow: hidden;
+  border-radius: 22rpx;
+  background: #f8f5ea;
+}
+
+.meal-image {
+  width: 100%;
+  height: 100%;
+}
+
+.meal-emoji {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: #eef7c8;
+  font-size: 48rpx;
+}
+
+.meal-type {
+  position: absolute;
+  bottom: 7rpx;
+  left: 7rpx;
+  padding: 2rpx 8rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 253, 247, 0.92);
+  font-size: 14rpx;
+  font-weight: 700;
+}
+
+.meal-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  margin-left: 15rpx;
+}
+
+.meal-time {
+  color: #969c93;
+  font-size: 16rpx;
+}
+
+.meal-name {
+  overflow: hidden;
+  margin-top: 3rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meal-items {
+  overflow: hidden;
+  margin-top: 3rpx;
+  color: #70786f;
+  font-size: 17rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meal-macros {
+  display: flex;
+  margin-top: 6rpx;
+  color: #70786f;
+  font-size: 15rpx;
+}
+
+.meal-macros text {
+  margin-right: 9rpx;
+}
+
+.meal-side {
+  display: flex;
+  width: 90rpx;
+  flex: none;
+  align-items: flex-end;
+  flex-direction: column;
+  margin-left: 6rpx;
+}
+
+.meal-kcal {
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.meal-kcal-unit {
+  color: #969c93;
+  font-size: 14rpx;
+}
+
+.delete-btn {
+  margin-top: 16rpx;
+  color: #a26c5f;
+  font-size: 17rpx;
+}
+
+.record-more {
+  margin-top: 14rpx;
+  padding: 24rpx;
+  color: #70786f;
+  border: 1rpx dashed rgba(21, 39, 31, 0.16);
+  border-radius: 22rpx;
+  font-size: 21rpx;
+  text-align: center;
+}
+
+.daily-advice {
+  margin-top: 38rpx;
+}
+
+.advice-item {
+  margin-bottom: 10rpx;
+}
+
+.footer-note {
+  margin-top: 24rpx;
+  padding: 0 6rpx;
+  color: #969c93;
+  font-size: 17rpx;
+  line-height: 1.6;
+}

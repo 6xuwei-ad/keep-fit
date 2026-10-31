@@ -1,0 +1,121 @@
+<view class="goals-page">
+  <view class="page-head">
+    <text class="eyebrow">YOUR BASELINE</text>
+    <view class="page-title">把目标，<br />调成你的节奏。</view>
+    <view class="page-sub">目标不是束缚，而是一把尺。先设一个能坚持的起点，之后随时可以回来调整。</view>
+    <view class="account-pill">
+      <text class="account-dot"></text>
+      {{accountLabel}}
+    </view>
+  </view>
+
+  <view class="card profile-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">PROFILE</text>
+        <view class="section-title">怎么称呼你</view>
+      </view>
+      <view class="avatar">{{avatar}}</view>
+    </view>
+    <view class="field-label">昵称</view>
+    <input class="name-input" value="{{name}}" maxlength="20" placeholder="食刻用户" bindinput="onNameInput" />
+  </view>
+
+  <view class="card goal-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">GOAL</text>
+        <view class="section-title">你现在更在意什么</view>
+      </view>
+    </view>
+    <view class="goal-options">
+      <view
+        wx:for="{{goals}}"
+        wx:key="id"
+        class="goal-option {{item.active ? 'active' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="chooseGoal"
+      >
+        <view class="goal-icon">{{item.icon}}</view>
+        <view class="goal-copy">
+          <text class="goal-name">{{item.label}}</text>
+          <text class="goal-desc">{{item.description}}</text>
+          <text class="goal-kcal">{{item.kcal}} kcal / 天</text>
+        </view>
+        <view class="goal-check">{{item.active ? '✓' : ''}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card targets-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">DAILY TARGETS</text>
+        <view class="section-title">每日目标</view>
+      </view>
+      <text class="macro-percent">宏量供能 {{macroPercent}}%</text>
+    </view>
+    <view class="targets-intro">按当前模式预填，也可以直接改成你习惯的数字。</view>
+
+    <view class="targets-grid">
+      <view class="target-field">
+        <text class="target-label">每日热量</text>
+        <view class="target-input-wrap">
+          <input class="target-input" type="number" value="{{targets.kcal}}" data-key="kcal" bindinput="onTargetInput" />
+          <text class="target-unit">kcal</text>
+        </view>
+      </view>
+      <view class="target-field">
+        <text class="target-label">蛋白质</text>
+        <view class="target-input-wrap">
+          <input class="target-input" type="number" value="{{targets.protein}}" data-key="protein" bindinput="onTargetInput" />
+          <text class="target-unit">g</text>
+        </view>
+      </view>
+      <view class="target-field">
+        <text class="target-label">碳水</text>
+        <view class="target-input-wrap">
+          <input class="target-input" type="number" value="{{targets.carbs}}" data-key="carbs" bindinput="onTargetInput" />
+          <text class="target-unit">g</text>
+        </view>
+      </view>
+      <view class="target-field">
+        <text class="target-label">脂肪</text>
+        <view class="target-input-wrap">
+          <input class="target-input" type="number" value="{{targets.fat}}" data-key="fat" bindinput="onTargetInput" />
+          <text class="target-unit">g</text>
+        </view>
+      </view>
+      <view class="target-field">
+        <text class="target-label">膳食纤维</text>
+        <view class="target-input-wrap">
+          <input class="target-input" type="number" value="{{targets.fiber}}" data-key="fiber" bindinput="onTargetInput" />
+          <text class="target-unit">g</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{error}}" class="form-error">{{error}}</view>
+
+    <view class="targets-actions">
+      <button class="btn btn-soft btn-small" bindtap="resetTargets">恢复推荐值</button>
+      <button class="btn btn-primary" bindtap="onSave" disabled="{{saving}}">{{saving ? '保存中…' : '保存目标'}}</button>
+    </view>
+  </view>
+
+  <view class="budget-card">
+    <text class="eyebrow eyebrow-light">YOUR DAILY BUDGET</text>
+    <view class="budget-kcal">{{targets.kcal}}<text>kcal</text></view>
+    <view class="budget-line"><text>蛋白质</text><text>{{targets.protein}}g</text></view>
+    <view class="budget-line"><text>碳水</text><text>{{targets.carbs}}g</text></view>
+    <view class="budget-line"><text>脂肪</text><text>{{targets.fat}}g</text></view>
+    <view class="budget-line"><text>膳食纤维</text><text>{{targets.fiber}}g</text></view>
+    <view class="budget-foot">每餐建议约占全天的 30–35%</view>
+  </view>
+
+  <view class="card info-card">
+    <view class="info-title">关于估算</view>
+    <view class="info-body">食物营养值来自公开食物成分数据的近似值；AI 识别与份量估算存在误差，适合趋势管理，不替代医疗建议。</view>
+    <view class="info-version">SHIKE v1.0 · 微信小程序</view>
+  </view>
+</view>
