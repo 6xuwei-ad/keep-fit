@@ -217,6 +217,7 @@ x-device-id: <8–64 位设备 ID>
 
 - [架构与项目结构](docs/ARCHITECTURE.md)
 - [API 契约](docs/API.md)
+- [产品路线图与功能优先级](docs/ROADMAP.md)
 - [微信小程序运行与发布](docs/WECHAT.md)
 - [微信小程序客户端说明](miniprogram/README.md)
 - [.env.example](.env.example)
@@ -225,7 +226,7 @@ x-device-id: <8–64 位设备 ID>
 
 ## 已知限制与下一步
 
-- 微信登录已实现，但默认 `touristappid` / 设备模式只适合开发；发布前必须配置自己的 AppID、Secret 与 `SESSION_SECRET`。
+- 微信登录已实现；发布前必须确认真实 AppID、AppSecret 与 `SESSION_SECRET` 只存在于服务端 `.env`，不要提交到仓库。
 - 设备模式下的历史记录不会自动归并到微信账号，上线前应补账号数据归并流程。
 - SQLite 适合单实例 MVP；多实例部署请迁移 PostgreSQL，并把图片移到对象存储。
 - 分析请求同步等待模型（3–8 秒）。流量上来后可改为任务队列 + WebSocket/轮询。
