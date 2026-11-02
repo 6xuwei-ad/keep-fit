@@ -130,6 +130,14 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
     "deviceId": "8d1f0c2e-...",
     "name": "食刻用户",
     "goal": "fat-loss",
+    "sex": null,
+    "age": null,
+    "heightCm": null,
+    "weightKg": null,
+    "activityLevel": null,
+    "targetsMode": "manual",
+    "bmr": null,
+    "tdee": null,
     "targets": {
       "kcal": 1800,
       "protein": 110,
@@ -145,6 +153,8 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 ### `PUT /api/profile`
 
+手动目标：
+
 ```json
 {
   "name": "小林",
@@ -159,12 +169,30 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 }
 ```
 
+按身体数据自动计算：
+
+```json
+{
+  "name": "小林",
+  "goal": "fat-loss",
+  "sex": "male",
+  "age": 35,
+  "heightCm": 178,
+  "weightKg": 78,
+  "activityLevel": "moderate",
+  "recalculate": true
+}
+```
+
 - `name` 可选，1–20 字。
 - `goal` 可选：`fat-loss` / `maintain` / `muscle`。
-- `targets` 可选；不传时若传了 `goal` 使用推荐目标，否则保留原值。
+- `targets` 可选；传了即视为手动目标（`targetsMode: "manual"`）。
+- `recalculate: true` 时，按 BMR/TDEE 自动计算目标（`targetsMode: "auto"`），需要完整的身体数据。
+- 身体数据：`sex` 为 `female` / `male`，`age` 18–80，`heightCm` 120–230，`weightKg` 30–250，`activityLevel` 为 `sedentary` / `light` / `moderate` / `active` / `very-active`。
+- 不传 `targets`、不传 `recalculate` 时：若传了 `goal` 使用推荐目标，否则保留原值。
 - 范围：kcal 800–5000，protein 30–300，carbs 30–600，fat 15–200，fiber 10–80。
 
-成功：`200 { "profile": {...} }`。
+成功：`200 { "profile": {...} }`。身体数据完整时，`profile.bmr` 与 `profile.tdee` 会返回估算值。
 
 ---
 

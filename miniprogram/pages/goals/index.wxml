@@ -21,6 +21,84 @@
     <input class="name-input" value="{{name}}" maxlength="20" placeholder="食刻用户" bindinput="onNameInput" />
   </view>
 
+  <view class="card body-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">BODY</text>
+        <view class="section-title">身体数据</view>
+      </view>
+      <text class="body-badge">{{bodyComplete ? (targetsMode == 'auto' ? '已参与计算' : '仅记录') : '选填'}}</text>
+    </view>
+    <view class="body-intro">填完后，热量和三大营养素会按你的基础代谢估算，而不是套固定档位。</view>
+
+    <view class="body-grid">
+      <view class="body-field">
+        <text class="body-label">性别</text>
+        <view class="sex-switch">
+          <view class="sex-option {{sex == 'female' ? 'active' : ''}}" data-value="female" bindtap="chooseSex">女</view>
+          <view class="sex-option {{sex == 'male' ? 'active' : ''}}" data-value="male" bindtap="chooseSex">男</view>
+        </view>
+      </view>
+      <view class="body-field">
+        <text class="body-label">年龄</text>
+        <view class="body-input-wrap">
+          <input class="body-input" type="number" value="{{age}}" data-key="age" bindinput="onBodyInput" placeholder="18–80" />
+          <text class="body-unit">岁</text>
+        </view>
+      </view>
+      <view class="body-field">
+        <text class="body-label">身高</text>
+        <view class="body-input-wrap">
+          <input class="body-input" type="digit" value="{{heightCm}}" data-key="heightCm" bindinput="onBodyInput" placeholder="170" />
+          <text class="body-unit">cm</text>
+        </view>
+      </view>
+      <view class="body-field">
+        <text class="body-label">体重</text>
+        <view class="body-input-wrap">
+          <input class="body-input" type="digit" value="{{weightKg}}" data-key="weightKg" bindinput="onBodyInput" placeholder="60" />
+          <text class="body-unit">kg</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="activity-block">
+      <text class="body-label">日常活动量</text>
+      <view class="activity-options">
+        <view
+          wx:for="{{activityOptions}}"
+          wx:key="id"
+          class="activity-option {{activityLevel == item.id ? 'active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="chooseActivity"
+        >
+          <text class="activity-name">{{item.label}}</text>
+          <text class="activity-desc">{{item.description}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{bodyComplete}}" class="body-metrics">
+      <view class="body-metric">
+        <text class="body-metric-label">基础代谢</text>
+        <text class="body-metric-value">{{bmr}}<text class="body-metric-unit"> kcal</text></text>
+      </view>
+      <view class="body-metric">
+        <text class="body-metric-label">每日消耗</text>
+        <text class="body-metric-value">{{tdee}}<text class="body-metric-unit"> kcal</text></text>
+      </view>
+      <view class="body-metric">
+        <text class="body-metric-label">目标来源</text>
+        <text class="body-metric-value body-metric-value--small">{{targetsMode == 'auto' ? '自动计算' : '手动设置'}}</text>
+      </view>
+    </view>
+
+    <button class="btn btn-soft btn-small body-calc" bindtap="recalculate" disabled="{{!bodyComplete}}">
+      按身体数据计算目标
+    </button>
+    <view wx:if="{{!bodyComplete}}" class="body-hint">填完性别、年龄、身高、体重和活动量后，才能自动计算。</view>
+  </view>
+
   <view class="card goal-card">
     <view class="card-head">
       <view>

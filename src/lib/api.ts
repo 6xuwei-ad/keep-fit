@@ -80,6 +80,13 @@ export async function updateProfile(payload: {
   name?: string;
   goal?: Profile["goal"];
   targets?: Targets;
+  targetsMode?: Profile["targetsMode"];
+  recalculate?: boolean;
+  sex?: Profile["sex"];
+  age?: Profile["age"];
+  heightCm?: Profile["heightCm"];
+  weightKg?: Profile["weightKg"];
+  activityLevel?: Profile["activityLevel"];
 }): Promise<Profile> {
   const data = await request<{ profile: Profile }>("/api/profile", {
     method: "PUT",

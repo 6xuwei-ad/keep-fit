@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const bodyUtil = require("../../utils/body");
 const { GOAL_TARGETS } = require("../../utils/constants");
 
 const GOAL_OPTIONS = [
@@ -22,16 +23,37 @@ const GOAL_OPTIONS = [
   }
 ];
 
-function goalOptions(selected) {
-  return GOAL_OPTIONS.map((goal) =>
-    Object.assign({}, goal, {
-      active: goal.id === selected,
-      kcal: GOAL_TARGETS[goal.id].kcal
-    })
-  );
+const DEFAULT_TARGETS = { kcal: 1800, protein: 110, carbs: 190, fat: 55, fiber: 25 };
+
+function numberOrNull(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
-const DEFAULT_TARGETS = { kcal: 1800, protein: 110, carbs: 190, fat: 55, fiber: 25 };
+function bodyFromData(data) {
+  return {
+    sex: data.sex || null,
+    age: numberOrNull(data.age),
+    heightCm: numberOrNull(data.heightCm),
+    weightKg: numberOrNull(data.weightKg),
+    activityLevel: data.activityLevel || null
+  };
+}
+
+function goalOptions(selected, body) {
+  const complete = body && bodyUtil.isComplete(body);
+  return GOAL_OPTIONS.map((goal) => {
+    let kcal = GOAL_TARGETS[goal.id].kcal;
+    if (complete) {
+      kcal = bodyUtil.computeTargets(body, goal.id).targets.kcal;
+    }
+    return Object.assign({}, goal, {
+      active: goal.id === selected,
+      kcal
+    });
+  });
+}
 
 Page({
   data: {
@@ -40,11 +62,21 @@ Page({
     avatar: "食",
     goal: "fat-loss",
     targets: DEFAULT_TARGETS,
-    goals: goalOptions("fat-loss"),
+    goals: goalOptions("fat-loss", null),
     saving: false,
     error: "",
     accountLabel: "设备模式",
-    macroPercent: 94
+    macroPercent: 94,
+    sex: "",
+    age: "",
+    heightCm: "",
+    weightKg: "",
+    activityLevel: "",
+    bodyComplete: false,
+    bmr: 0,
+    tdee: 0,
+    targetsMode: "manual",
+    activityOptions: bodyUtil.ACTIVITY_OPTIONS
   },
 
   onLoad() {
@@ -65,19 +97,43 @@ Page({
         const meta = results[1];
         app.globalData.profile = profile;
         const targets = profile.targets || DEFAULT_TARGETS;
+        const body = {
+          sex: profile.sex,
+          age: profile.age,
+          heightCm: profile.heightCm,
+          weightKg: profile.weightKg,
+          activityLevel: profile.activityLevel
+        };
+        const complete = bodyUtil.isComplete(body);
+        const metrics = complete ? bodyUtil.metrics(body) : null;
         this.setData({
           loading: false,
           name: profile.name || "食刻用户",
           avatar: (profile.name || "食刻用户").slice(0, 1),
           goal: profile.goal || "fat-loss",
           targets,
-          goals: goalOptions(profile.goal || "fat-loss"),
+          goals: goalOptions(profile.goal || "fat-loss", complete ? body : null),
           accountLabel: api.getToken()
             ? "微信账号已连接"
             : meta.wechatEnabled
               ? "设备模式 · 微信登录未完成"
               : "设备模式",
-          macroPercent: this.macroPercent(targets)
+          macroPercent: this.macroPercent(targets),
+          sex: profile.sex || "",
+          age: profile.age === null || profile.age === undefined ? "" : profile.age,
+          heightCm:
+            profile.heightCm === null || profile.heightCm === undefined
+              ? ""
+              : profile.heightCm,
+          weightKg:
+            profile.weightKg === null || profile.weightKg === undefined
+              ? ""
+              : profile.weightKg,
+          activityLevel: profile.activityLevel || "",
+          bodyComplete: complete,
+          bmr: profile.bmr || (metrics ? metrics.bmr : 0),
+          tdee: profile.tdee || (metrics ? metrics.tdee : 0),
+          targetsMode: profile.targetsMode === "auto" ? "auto" : "manual"
         });
       })
       .catch((error) => {
@@ -91,18 +147,69 @@ Page({
     return targets.kcal > 0 ? Math.round((kcal / targets.kcal) * 100) : 0;
   },
 
+  refreshBody() {
+    const body = bodyFromData(this.data);
+    const complete = bodyUtil.isComplete(body);
+    const patch = {
+      bodyComplete: complete,
+      goals: goalOptions(this.data.goal, complete ? body : null)
+    };
+
+    if (complete) {
+      const metrics = bodyUtil.metrics(body);
+      patch.bmr = metrics.bmr;
+      patch.tdee = metrics.tdee;
+      if (this.data.targetsMode === "auto") {
+        const plan = bodyUtil.computeTargets(body, this.data.goal);
+        patch.targets = plan.targets;
+        patch.macroPercent = this.macroPercent(plan.targets);
+      }
+    } else {
+      patch.bmr = 0;
+      patch.tdee = 0;
+    }
+
+    this.setData(patch);
+  },
+
   onNameInput(event) {
     const name = event.detail.value;
     this.setData({ name, avatar: name.slice(0, 1) || "食", error: "" });
   },
 
+  onBodyInput(event) {
+    const key = event.currentTarget.dataset.key;
+    const raw = event.detail.value;
+    const value = raw === "" ? "" : Number(raw);
+    if (raw !== "" && !Number.isFinite(value)) return;
+    this.setData({ [key]: value, error: "" }, () => this.refreshBody());
+  },
+
+  chooseSex(event) {
+    this.setData({ sex: event.currentTarget.dataset.value, error: "" }, () =>
+      this.refreshBody()
+    );
+  },
+
+  chooseActivity(event) {
+    this.setData(
+      { activityLevel: event.currentTarget.dataset.id, error: "" },
+      () => this.refreshBody()
+    );
+  },
+
   chooseGoal(event) {
     const goal = event.currentTarget.dataset.id;
-    const targets = GOAL_TARGETS[goal];
+    const body = bodyFromData(this.data);
+    const complete = bodyUtil.isComplete(body);
+    const targets = complete
+      ? bodyUtil.computeTargets(body, goal).targets
+      : GOAL_TARGETS[goal];
     this.setData({
       goal,
       targets,
-      goals: goalOptions(goal),
+      goals: goalOptions(goal, complete ? body : null),
+      targetsMode: complete ? "auto" : "manual",
       macroPercent: this.macroPercent(targets),
       error: ""
     });
@@ -116,15 +223,46 @@ Page({
     const targets = Object.assign({}, this.data.targets, { [key]: value });
     this.setData({
       targets,
+      targetsMode: "manual",
       macroPercent: this.macroPercent(targets),
       error: ""
     });
   },
 
+  recalculate() {
+    const body = bodyFromData(this.data);
+    if (!bodyUtil.isComplete(body)) {
+      wx.showToast({ title: "请先填完身体数据", icon: "none" });
+      return;
+    }
+    const plan = bodyUtil.computeTargets(body, this.data.goal);
+    this.setData({
+      targets: plan.targets,
+      bmr: plan.bmr,
+      tdee: plan.tdee,
+      targetsMode: "auto",
+      macroPercent: this.macroPercent(plan.targets),
+      error: ""
+    });
+    wx.showToast({ title: "已按身体数据计算", icon: "none" });
+  },
+
   resetTargets() {
+    const body = bodyFromData(this.data);
+    if (bodyUtil.isComplete(body)) {
+      const plan = bodyUtil.computeTargets(body, this.data.goal);
+      this.setData({
+        targets: plan.targets,
+        targetsMode: "auto",
+        macroPercent: this.macroPercent(plan.targets),
+        error: ""
+      });
+      return;
+    }
     const targets = GOAL_TARGETS[this.data.goal] || DEFAULT_TARGETS;
     this.setData({
       targets,
+      targetsMode: "manual",
       macroPercent: this.macroPercent(targets),
       error: ""
     });
@@ -132,6 +270,16 @@ Page({
 
   validate() {
     if (!this.data.name.trim()) return "给自己一个称呼吧";
+    const body = bodyFromData(this.data);
+    const hasBodyInput =
+      Boolean(this.data.sex) ||
+      this.data.age !== "" ||
+      this.data.heightCm !== "" ||
+      this.data.weightKg !== "" ||
+      Boolean(this.data.activityLevel);
+    if (hasBodyInput && !bodyUtil.isComplete(body)) {
+      return "请把身体数据填写完整（年龄 18–80 岁，身高 120–230cm，体重 30–250kg）";
+    }
     const limits = {
       kcal: [800, 5000, "每日热量"],
       protein: [30, 300, "蛋白质"],
@@ -169,19 +317,44 @@ Page({
 
     this.setData({ saving: true, error: "" });
     wx.showLoading({ title: "正在保存…", mask: true });
+
+    const payload = {
+      name: this.data.name.trim(),
+      goal: this.data.goal,
+      sex: this.data.sex || null,
+      age: numberOrNull(this.data.age),
+      heightCm: numberOrNull(this.data.heightCm),
+      weightKg: numberOrNull(this.data.weightKg),
+      activityLevel: this.data.activityLevel || null
+    };
+    if (this.data.targetsMode === "auto" && this.data.bodyComplete) {
+      payload.recalculate = true;
+    } else {
+      payload.targets = this.data.targets;
+    }
+
     api
-      .updateProfile({
-        name: this.data.name.trim(),
-        goal: this.data.goal,
-        targets: this.data.targets
-      })
+      .updateProfile(payload)
       .then((result) => {
         wx.hideLoading();
-        getApp().globalData.profile = result.profile;
+        const profile = result.profile;
+        getApp().globalData.profile = profile;
+        const complete = bodyUtil.isComplete({
+          sex: profile.sex,
+          age: profile.age,
+          heightCm: profile.heightCm,
+          weightKg: profile.weightKg,
+          activityLevel: profile.activityLevel
+        });
         this.setData({
           saving: false,
-          targets: result.profile.targets,
-          macroPercent: this.macroPercent(result.profile.targets)
+          targets: profile.targets,
+          targetsMode: profile.targetsMode,
+          bmr: profile.bmr || 0,
+          tdee: profile.tdee || 0,
+          bodyComplete: complete,
+          goals: goalOptions(profile.goal, complete ? profile : null),
+          macroPercent: this.macroPercent(profile.targets)
         });
         wx.showToast({ title: "目标已更新", icon: "success" });
       })

@@ -45,6 +45,7 @@
 }
 
 .profile-card,
+.body-card,
 .goal-card,
 .targets-card,
 .info-card {
@@ -87,6 +88,191 @@
   border-radius: 18rpx;
   background: #f8f5ea;
   font-size: 25rpx;
+}
+
+.body-badge {
+  padding: 5rpx 12rpx;
+  color: #70786f;
+  border: 1rpx solid #deddcf;
+  border-radius: 999rpx;
+  font-size: 16rpx;
+}
+
+.body-intro {
+  margin-top: 12rpx;
+  color: #70786f;
+  font-size: 19rpx;
+  line-height: 1.6;
+}
+
+.body-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 14rpx;
+}
+
+.body-field {
+  width: 50%;
+  margin-top: 12rpx;
+}
+
+.body-field:nth-child(odd) {
+  padding-right: 8rpx;
+}
+
+.body-field:nth-child(even) {
+  padding-left: 8rpx;
+}
+
+.body-label {
+  display: block;
+  margin-bottom: 7rpx;
+  color: #70786f;
+  font-size: 18rpx;
+  font-weight: 600;
+}
+
+.body-input-wrap,
+.sex-switch {
+  display: flex;
+  height: 66rpx;
+  align-items: center;
+  padding: 0 15rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 16rpx;
+  background: #f8f5ea;
+}
+
+.body-input {
+  min-width: 0;
+  flex: 1;
+  font-size: 24rpx;
+}
+
+.body-unit {
+  color: #8d948d;
+  font-size: 17rpx;
+}
+
+.sex-switch {
+  padding: 4rpx;
+  background: #f3f1e8;
+}
+
+.sex-option {
+  display: flex;
+  height: 56rpx;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  color: #70786f;
+  border-radius: 12rpx;
+  font-size: 21rpx;
+}
+
+.sex-option.active {
+  color: #15271f;
+  background: #fffdf7;
+  font-weight: 700;
+  box-shadow: 0 2rpx 8rpx rgba(21, 39, 31, 0.08);
+}
+
+.activity-block {
+  margin-top: 16rpx;
+}
+
+.activity-options {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.activity-option {
+  width: 50%;
+  padding: 12rpx 12rpx;
+  margin-top: 8rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 14rpx;
+  background: #f8f5ea;
+}
+
+.activity-option:nth-child(odd) {
+  margin-right: 0;
+  width: calc(50% - 4rpx);
+}
+
+.activity-option:nth-child(even) {
+  width: calc(50% - 4rpx);
+  margin-left: 8rpx;
+}
+
+.activity-option.active {
+  border-color: #1b4b37;
+  background: #eef7c8;
+}
+
+.activity-name {
+  display: block;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.activity-desc {
+  display: block;
+  margin-top: 2rpx;
+  color: #70786f;
+  font-size: 15rpx;
+  line-height: 1.4;
+}
+
+.body-metrics {
+  display: flex;
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(21, 39, 31, 0.08);
+}
+
+.body-metric {
+  flex: 1;
+  min-width: 0;
+}
+
+.body-metric-label {
+  display: block;
+  color: #8d948d;
+  font-size: 16rpx;
+}
+
+.body-metric-value {
+  display: block;
+  margin-top: 3rpx;
+  color: #15271f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.body-metric-value--small {
+  font-family: -apple-system, sans-serif;
+  font-size: 20rpx;
+}
+
+.body-metric-unit {
+  color: #8d948d;
+  font-family: -apple-system, sans-serif;
+  font-size: 14rpx;
+}
+
+.body-calc {
+  width: 100%;
+  margin-top: 16rpx;
+}
+
+.body-hint {
+  margin-top: 8rpx;
+  color: #969c93;
+  font-size: 16rpx;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .goal-options {

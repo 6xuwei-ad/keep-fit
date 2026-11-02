@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { AppConfig } from "./config.ts";
 import type { Store } from "./store.ts";
 import type {
+  ActivityLevel,
   AppMeta,
   CreateMealInput,
   DaySummary,
@@ -13,9 +14,13 @@ import type {
   Goal,
   MealType,
   NutritionFacts,
-  Targets
+  Profile,
+  Sex,
+  Targets,
+  TargetsMode
 } from "../shared/types.ts";
 import { buildDailyAdvice } from "../shared/advice.ts";
+import { computeTargets, isBodyComplete } from "../shared/body.ts";
 import {
   GOAL_TARGETS,
   caloriePercent,
@@ -33,6 +38,15 @@ import { itemsTotal, makeFoodItem } from "./services/items.ts";
 import { buildDemoRecognition, recognizeFood } from "./services/vision.ts";
 
 const GOALS: Goal[] = ["fat-loss", "maintain", "muscle"];
+const SEXES: Sex[] = ["female", "male"];
+const ACTIVITY_LEVELS: ActivityLevel[] = [
+  "sedentary",
+  "light",
+  "moderate",
+  "active",
+  "very-active"
+];
+const TARGETS_MODES: TargetsMode[] = ["auto", "manual"];
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 const CATEGORIES: FoodCategory[] = [
   "protein",
@@ -93,7 +107,17 @@ const createMealSchema = z.object({
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(20).optional(),
   goal: z.enum(GOALS as [Goal, ...Goal[]]).optional(),
-  targets: targetsSchema.optional()
+  targets: targetsSchema.optional(),
+  targetsMode: z.enum(TARGETS_MODES as [TargetsMode, ...TargetsMode[]]).optional(),
+  recalculate: z.boolean().optional(),
+  sex: z.enum(SEXES as [Sex, ...Sex[]]).nullable().optional(),
+  age: z.number().int().min(18).max(80).nullable().optional(),
+  heightCm: z.number().min(120).max(230).nullable().optional(),
+  weightKg: z.number().min(30).max(250).nullable().optional(),
+  activityLevel: z
+    .enum(ACTIVITY_LEVELS as [ActivityLevel, ...ActivityLevel[]])
+    .nullable()
+    .optional()
 });
 
 function asyncRoute(
@@ -299,14 +323,67 @@ export function createApp({ config, store }: CreateAppOptions) {
       if (!parsed.success) {
         throw new AppError(400, "目标设置不完整或超出范围", "INVALID_PROFILE", parsed.error.issues);
       }
-      const targetFromGoal = parsed.data.goal
-        ? GOAL_TARGETS[parsed.data.goal]
-        : undefined;
-      const targets = parsed.data.targets ?? targetFromGoal;
-      const profile = store.updateProfile(deviceId, {
+
+      const current = store.ensureProfile(deviceId);
+      const body = {
+        sex: parsed.data.sex !== undefined ? parsed.data.sex : current.sex,
+        age: parsed.data.age !== undefined ? parsed.data.age : current.age,
+        heightCm:
+          parsed.data.heightCm !== undefined ? parsed.data.heightCm : current.heightCm,
+        weightKg:
+          parsed.data.weightKg !== undefined ? parsed.data.weightKg : current.weightKg,
+        activityLevel:
+          parsed.data.activityLevel !== undefined
+            ? parsed.data.activityLevel
+            : current.activityLevel
+      };
+      const goal = parsed.data.goal ?? current.goal;
+      const hasBodyPatch =
+        parsed.data.sex !== undefined ||
+        parsed.data.age !== undefined ||
+        parsed.data.heightCm !== undefined ||
+        parsed.data.weightKg !== undefined ||
+        parsed.data.activityLevel !== undefined;
+      const wantsAuto =
+        parsed.data.recalculate === true || parsed.data.targetsMode === "auto";
+
+      let targets = parsed.data.targets;
+      let targetsMode: TargetsMode | undefined;
+
+      if (targets) {
+        targetsMode = "manual";
+      } else if (wantsAuto) {
+        if (!isBodyComplete(body)) {
+          throw new AppError(
+            400,
+            "请先填写完整的性别、年龄、身高、体重和活动量",
+            "BODY_INCOMPLETE"
+          );
+        }
+        targets = computeTargets(body, goal).targets;
+        targetsMode = "auto";
+      } else if (
+        current.targetsMode === "auto" &&
+        isBodyComplete(body) &&
+        (hasBodyPatch || parsed.data.goal !== undefined)
+      ) {
+        targets = computeTargets(body, goal).targets;
+        targetsMode = "auto";
+      } else if (current.targetsMode === "auto" && !isBodyComplete(body)) {
+        targetsMode = "manual";
+      } else if (parsed.data.goal) {
+        targets = GOAL_TARGETS[goal];
+        targetsMode = "manual";
+      } else if (parsed.data.targetsMode === "manual") {
+        targetsMode = "manual";
+      }
+
+      const profile: Profile = store.updateProfile(deviceId, {
         ...(parsed.data.name ? { name: parsed.data.name } : {}),
         ...(parsed.data.goal ? { goal: parsed.data.goal } : {}),
-        ...(targets ? { targets } : {})
+        ...body,
+        ...(targets ? { targets } : {}),
+        ...(targetsMode ? { targetsMode } : {})
       });
       res.json({ profile });
     })

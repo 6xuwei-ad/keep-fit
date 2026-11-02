@@ -173,6 +173,65 @@ test("识别、保存、汇总、删除的完整 API 流程", async (t) => {
   const emptyAgain = await get("/api/day?date=2026-10-31");
   const emptyAgainBody = (await emptyAgain.json()) as DayResponse;
   assert.equal(emptyAgainBody.summary.meals.length, 0);
+
+  const bodyUpdated = await fetch(`${base}/api/profile`, {
+    method: "PUT",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      goal: "fat-loss",
+      sex: "male",
+      age: 35,
+      heightCm: 178,
+      weightKg: 78,
+      activityLevel: "moderate",
+      recalculate: true
+    })
+  });
+  assert.equal(bodyUpdated.status, 200);
+  const bodyProfile = ((await bodyUpdated.json()) as { profile: Profile }).profile;
+  assert.equal(bodyProfile.targetsMode, "auto");
+  assert.ok(bodyProfile.bmr && bodyProfile.bmr > 1000);
+  assert.ok(bodyProfile.tdee && bodyProfile.tdee > bodyProfile.bmr);
+  assert.ok(bodyProfile.targets.kcal >= 1500 && bodyProfile.targets.kcal <= 3000);
+
+  const weightAdjusted = await fetch(`${base}/api/profile`, {
+    method: "PUT",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({ weightKg: 80 })
+  });
+  assert.equal(weightAdjusted.status, 200);
+  const adjustedProfile = ((await weightAdjusted.json()) as { profile: Profile }).profile;
+  assert.equal(adjustedProfile.targetsMode, "auto");
+  assert.equal(adjustedProfile.targets.protein, 145);
+  assert.notEqual(adjustedProfile.targets.kcal, bodyProfile.targets.kcal);
+
+  const manualOverride = await fetch(`${base}/api/profile`, {
+    method: "PUT",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      targets: { kcal: 2000, protein: 130, carbs: 200, fat: 60, fiber: 25 }
+    })
+  });
+  assert.equal(manualOverride.status, 200);
+  const manualProfile = ((await manualOverride.json()) as { profile: Profile }).profile;
+  assert.equal(manualProfile.targetsMode, "manual");
+  assert.equal(manualProfile.targets.kcal, 2000);
+
+  const incompleteBody = await fetch(`${base}/api/profile`, {
+    method: "PUT",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      recalculate: true,
+      sex: null,
+      age: null,
+      heightCm: null,
+      weightKg: null,
+      activityLevel: null
+    })
+  });
+  assert.equal(incompleteBody.status, 400);
+  const incompleteBodyBody = (await incompleteBody.json()) as { code: string };
+  assert.equal(incompleteBodyBody.code, "BODY_INCOMPLETE");
 });
 
 test("缺少设备标识时拒绝访问个人数据", async (t) => {

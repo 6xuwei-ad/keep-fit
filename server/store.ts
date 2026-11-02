@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type {
+  ActivityLevel,
+  BodyProfile,
   CreateMealInput,
   FoodCategory,
   FoodItem,
@@ -10,14 +12,23 @@ import type {
   Meal,
   NutritionFacts,
   Profile,
-  Targets
+  Sex,
+  Targets,
+  TargetsMode
 } from "../shared/types.ts";
 import { DEFAULT_TARGETS, round } from "../shared/nutrition.ts";
+import { bodyMetrics, isBodyComplete } from "../shared/body.ts";
 
 interface ProfileRow {
   device_id: string;
   name: string;
   goal: string;
+  sex: string | null;
+  age: number | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  activity_level: string | null;
+  targets_mode: string;
   target_kcal: number;
   target_protein: number;
   target_carbs: number;
@@ -63,10 +74,19 @@ interface ItemRow {
 }
 
 function mapProfile(row: ProfileRow): Profile {
+  const body: BodyProfile = {
+    sex: (row.sex as Sex | null) ?? null,
+    age: row.age ?? null,
+    heightCm: row.height_cm ?? null,
+    weightKg: row.weight_kg ?? null,
+    activityLevel: (row.activity_level as ActivityLevel | null) ?? null
+  };
+  const metrics = isBodyComplete(body) ? bodyMetrics(body) : null;
   return {
     deviceId: row.device_id,
     name: row.name,
     goal: row.goal as Goal,
+    ...body,
     targets: {
       kcal: row.target_kcal,
       protein: row.target_protein,
@@ -74,6 +94,9 @@ function mapProfile(row: ProfileRow): Profile {
       fat: row.target_fat,
       fiber: row.target_fiber
     },
+    targetsMode: row.targets_mode === "auto" ? "auto" : "manual",
+    bmr: metrics?.bmr ?? null,
+    tdee: metrics?.tdee ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -139,6 +162,12 @@ export class Store {
         device_id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         goal TEXT NOT NULL,
+        sex TEXT,
+        age INTEGER,
+        height_cm REAL,
+        weight_kg REAL,
+        activity_level TEXT,
+        targets_mode TEXT NOT NULL DEFAULT 'manual',
         target_kcal REAL NOT NULL,
         target_protein REAL NOT NULL,
         target_carbs REAL NOT NULL,
@@ -190,6 +219,23 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_meals_device_date ON meals(device_id, date, eaten_at);
       CREATE INDEX IF NOT EXISTS idx_items_meal ON meal_items(meal_id, order_index);
     `);
+
+    // 老版本数据库没有身体数据字段，逐列补齐，保留已有目标值。
+    this.addColumnIfMissing("profiles", "sex", "TEXT");
+    this.addColumnIfMissing("profiles", "age", "INTEGER");
+    this.addColumnIfMissing("profiles", "height_cm", "REAL");
+    this.addColumnIfMissing("profiles", "weight_kg", "REAL");
+    this.addColumnIfMissing("profiles", "activity_level", "TEXT");
+    this.addColumnIfMissing("profiles", "targets_mode", "TEXT NOT NULL DEFAULT 'manual'");
+  }
+
+  private addColumnIfMissing(table: string, column: string, definition: string): void {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+      name: string;
+    }>;
+    if (!columns.some((entry) => entry.name === column)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
   }
 
   ensureProfile(deviceId: string): Profile {
@@ -200,14 +246,21 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO profiles
-          (device_id, name, goal, target_kcal, target_protein, target_carbs, target_fat, target_fiber, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (device_id, name, goal, sex, age, height_cm, weight_kg, activity_level, targets_mode,
+           target_kcal, target_protein, target_carbs, target_fat, target_fiber, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(device_id) DO NOTHING`
       )
       .run(
         deviceId,
         "食刻用户",
         "fat-loss",
+        null,
+        null,
+        null,
+        null,
+        null,
+        "manual",
         DEFAULT_TARGETS.kcal,
         DEFAULT_TARGETS.protein,
         DEFAULT_TARGETS.carbs,
@@ -228,20 +281,37 @@ export class Store {
 
   updateProfile(
     deviceId: string,
-    patch: { name?: string; goal?: Goal; targets?: Targets }
+    patch: {
+      name?: string;
+      goal?: Goal;
+      targets?: Targets;
+      targetsMode?: TargetsMode;
+      sex?: Sex | null;
+      age?: number | null;
+      heightCm?: number | null;
+      weightKg?: number | null;
+      activityLevel?: ActivityLevel | null;
+    }
   ): Profile {
     this.ensureProfile(deviceId);
     const current = this.getProfile(deviceId)!;
     const targets = patch.targets ?? current.targets;
     this.db
       .prepare(
-        `UPDATE profiles SET name = ?, goal = ?, target_kcal = ?, target_protein = ?,
-         target_carbs = ?, target_fat = ?, target_fiber = ?, updated_at = ?
+        `UPDATE profiles SET name = ?, goal = ?, sex = ?, age = ?, height_cm = ?,
+         weight_kg = ?, activity_level = ?, targets_mode = ?, target_kcal = ?,
+         target_protein = ?, target_carbs = ?, target_fat = ?, target_fiber = ?, updated_at = ?
          WHERE device_id = ?`
       )
       .run(
         patch.name ?? current.name,
         patch.goal ?? current.goal,
+        patch.sex !== undefined ? patch.sex : current.sex,
+        patch.age !== undefined ? patch.age : current.age,
+        patch.heightCm !== undefined ? patch.heightCm : current.heightCm,
+        patch.weightKg !== undefined ? patch.weightKg : current.weightKg,
+        patch.activityLevel !== undefined ? patch.activityLevel : current.activityLevel,
+        patch.targetsMode ?? current.targetsMode,
         round(targets.kcal, 0),
         round(targets.protein, 0),
         round(targets.carbs, 0),

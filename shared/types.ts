@@ -15,6 +15,12 @@ export type FoodCategory =
 
 export type Goal = "fat-loss" | "maintain" | "muscle";
 
+export type Sex = "female" | "male";
+
+export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very-active";
+
+export type TargetsMode = "auto" | "manual";
+
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
 export interface NutritionFacts {
@@ -27,11 +33,27 @@ export interface NutritionFacts {
 
 export interface Targets extends NutritionFacts {}
 
-export interface Profile {
+export interface BodyProfile {
+  sex: Sex | null;
+  age: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  activityLevel: ActivityLevel | null;
+}
+
+export interface BodyMetrics {
+  bmr: number;
+  tdee: number;
+}
+
+export interface Profile extends BodyProfile {
   deviceId: string;
   name: string;
   goal: Goal;
   targets: Targets;
+  targetsMode: TargetsMode;
+  bmr: number | null;
+  tdee: number | null;
   createdAt: string;
   updatedAt: string;
 }

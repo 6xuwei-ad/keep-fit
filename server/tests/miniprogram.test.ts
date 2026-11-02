@@ -4,6 +4,12 @@ import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import { scaleNutrition, sumNutrition } from "../../shared/nutrition.ts";
+import {
+  bodyMetrics as sharedBodyMetrics,
+  computeTargets as sharedComputeTargets,
+  isBodyComplete as sharedIsBodyComplete,
+  type CompleteBodyProfile
+} from "../../shared/body.ts";
 
 const root = process.cwd();
 const cache = new Map<string, unknown>();
@@ -46,6 +52,33 @@ test("小程序营养工具与服务端共享计算一致", () => {
     { nutrition: mini.scale({ kcal: 116, protein: 2.6, carbs: 25.9, fat: 0.3, fiber: 0.3 }, 150) }
   ];
   assert.deepEqual(mini.sum(items), sumNutrition(items));
+});
+
+test("小程序身体数据与目标计算与服务端一致", () => {
+  const mini = loadCommonJs("miniprogram/utils/body.js");
+  const bodies: CompleteBodyProfile[] = [
+    { sex: "female", age: 28, heightCm: 165, weightKg: 58, activityLevel: "light" },
+    { sex: "male", age: 35, heightCm: 178, weightKg: 78, activityLevel: "moderate" },
+    { sex: "female", age: 45, heightCm: 158, weightKg: 82, activityLevel: "sedentary" }
+  ];
+  const goals = ["fat-loss", "maintain", "muscle"] as const;
+
+  for (const body of bodies) {
+    assert.equal(mini.isComplete(body), sharedIsBodyComplete(body));
+    assert.deepEqual(mini.metrics(body), sharedBodyMetrics(body));
+    for (const goal of goals) {
+      assert.deepEqual(mini.computeTargets(body, goal), sharedComputeTargets(body, goal));
+    }
+  }
+
+  const incomplete = {
+    sex: "female",
+    age: 28,
+    heightCm: null,
+    weightKg: 58,
+    activityLevel: "light"
+  } as const;
+  assert.equal(mini.isComplete(incomplete), sharedIsBodyComplete(incomplete));
 });
 
 test("小程序页面与组件脚本可以在微信运行时外壳下加载", () => {
