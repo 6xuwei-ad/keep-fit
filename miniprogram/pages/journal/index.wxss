@@ -45,6 +45,7 @@
 .date-arrow {
   width: 58rpx;
   height: 58rpx;
+  flex: none;
   color: #31473b;
   border-radius: 50%;
   font-size: 36rpx;
@@ -58,20 +59,26 @@
 
 .date-center {
   display: flex;
+  min-width: 0;
   flex: 1;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .date-friendly {
+  flex: none;
   font-size: 24rpx;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .date-full {
+  flex: none;
   margin-left: 8rpx;
   color: #70786f;
   font-size: 18rpx;
+  white-space: nowrap;
 }
 
 .today-btn {

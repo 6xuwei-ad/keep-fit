@@ -53,7 +53,7 @@ Component({
           if (!res || !res[0] || !res[0].node) return;
           const canvas = res[0].node;
           const ctx = canvas.getContext("2d");
-          const system = wx.getSystemInfoSync();
+          const system = wx.getWindowInfo();
           const dpr = system.pixelRatio || 2;
 
           canvas.width = size * dpr;
