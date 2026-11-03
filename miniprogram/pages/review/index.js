@@ -2,6 +2,7 @@ const api = require("../../utils/api");
 const format = require("../../utils/format");
 const nutrition = require("../../utils/nutrition");
 const advice = require("../../utils/advice");
+const portion = require("../../utils/portion");
 const { MEAL_TYPES, MEAL_TYPE_LABELS } = require("../../utils/constants");
 
 function mealTypeOptions(selected) {
@@ -33,7 +34,10 @@ Page({
     mealPercent: 0,
     avgConfidence: 0,
     saving: false,
-    saveAsTemplate: false
+    saveAsTemplate: false,
+    portionRatio: 1,
+    portionPercent: 100,
+    portionOptions: portion.ratioOptions(1)
   },
 
   onLoad() {
@@ -98,6 +102,8 @@ Page({
     const items = (rawItems || []).map((item) => {
       const value = nutrition.scale(item.per100g, item.grams);
       return Object.assign({}, item, {
+        baseGrams: Number(item.baseGrams) || Number(item.grams) || 1,
+        portionRefs: portion.referencesFor(item),
         nutrition: value,
         confidencePct: Math.round((item.confidence || 0.7) * 100),
         kcalText: Math.round(value.kcal),
@@ -137,8 +143,7 @@ Page({
     const items = this.data.items.slice();
     const item = items[index];
     if (!item) return;
-    const next = Math.max(1, Math.min(3000, Math.round(Number(grams) || 0)));
-    items[index] = Object.assign({}, item, { grams: next });
+    items[index] = portion.setGrams(item, grams, this.data.portionRatio);
     this.recalc(items);
   },
 
@@ -170,6 +175,24 @@ Page({
     if (item) this.changeGrams(index, Math.max(1, Math.round(item.grams * factor)));
   },
 
+  onSetPortion(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    const grams = Number(event.currentTarget.dataset.grams);
+    if (grams > 0) this.changeGrams(index, grams);
+  },
+
+  onPortionRatio(event) {
+    const ratio = Number(event.currentTarget.dataset.ratio);
+    if (!ratio || ratio === this.data.portionRatio) return;
+    const items = portion.applyRatio(this.data.items, ratio);
+    this.setData({
+      portionRatio: ratio,
+      portionPercent: Math.round(ratio * 100),
+      portionOptions: portion.ratioOptions(ratio)
+    });
+    this.recalc(items);
+  },
+
   onRemove(event) {
     const index = Number(event.currentTarget.dataset.index);
     const items = this.data.items.slice();
@@ -195,12 +218,14 @@ Page({
     const portion = food.portions && food.portions[0];
 
     if (existingIndex >= 0) {
-      items[existingIndex] = Object.assign({}, items[existingIndex], {
-        grams: items[existingIndex].grams + grams
-      });
+      items[existingIndex] = portion.setGrams(
+        items[existingIndex],
+        items[existingIndex].grams + grams,
+        this.data.portionRatio
+      );
       wx.showToast({ title: `已增加${food.name}`, icon: "none" });
     } else {
-      items.push({
+      const added = {
         id: `${food.id}-${Date.now()}`,
         foodId: food.id,
         name: food.name,
@@ -212,7 +237,8 @@ Page({
         per100g: food.per100g,
         nutrition: nutrition.scale(food.per100g, grams),
         source: "database"
-      });
+      };
+      items.push(portion.setGrams(added, grams, this.data.portionRatio));
       wx.showToast({ title: `已添加${food.name}`, icon: "none" });
     }
     this.recalc(items);

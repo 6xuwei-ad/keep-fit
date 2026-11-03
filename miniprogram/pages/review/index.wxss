@@ -536,6 +536,84 @@
   width: 270rpx;
 }
 
+.portion-card {
+  margin-top: 14rpx;
+  padding: 22rpx 20rpx 18rpx;
+}
+
+.portion-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.portion-percent {
+  color: #1b4b37;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 34rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.portion-options {
+  display: flex;
+  margin-top: 14rpx;
+  padding: 4rpx;
+  border: 1rpx solid rgba(21, 39, 31, 0.09);
+  border-radius: 999rpx;
+  background: #f8f5ea;
+}
+
+.portion-option {
+  height: 56rpx;
+  flex: 1;
+  color: #70786f;
+  border-radius: 999rpx;
+  font-size: 21rpx;
+  font-weight: 650;
+  line-height: 56rpx;
+  text-align: center;
+}
+
+.portion-option.active {
+  color: #fbfdf0;
+  background: #1b4b37;
+  box-shadow: 0 6rpx 14rpx rgba(27, 75, 55, 0.18);
+}
+
+.portion-note {
+  display: block;
+  margin-top: 10rpx;
+  color: #969c93;
+  font-size: 16rpx;
+  line-height: 1.55;
+}
+
+.portion-refs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10rpx;
+}
+
+.portion-refs-label {
+  margin-right: 8rpx;
+  color: #969c93;
+  font-size: 16rpx;
+}
+
+.portion-ref {
+  height: 44rpx;
+  margin: 0 8rpx 4rpx 0;
+  padding: 0 14rpx;
+  color: #31473b;
+  border: 1rpx solid rgba(27, 75, 55, 0.12);
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 16rpx;
+  line-height: 44rpx;
+}
+
 .template-toggle {
   display: flex;
   align-items: center;

@@ -87,6 +87,26 @@
     </button>
   </view>
 
+  <view class="card portion-card">
+    <view class="portion-head">
+      <view>
+        <text class="eyebrow">PORTION CHECK</text>
+        <view class="section-title">这盘实际吃了多少？</view>
+      </view>
+      <text class="portion-percent">{{portionPercent}}%</text>
+    </view>
+    <view class="portion-options">
+      <view
+        wx:for="{{portionOptions}}"
+        wx:key="ratio"
+        class="portion-option {{item.active ? 'active' : ''}}"
+        data-ratio="{{item.ratio}}"
+        bindtap="onPortionRatio"
+      >{{item.label}}</view>
+    </view>
+    <text class="portion-note">选一半，整盘食材和热量都会按 50% 重算；之后仍可单独改克数。</text>
+  </view>
+
   <view class="section-head food-head">
     <view>
       <text class="eyebrow">PORTIONS</text>
@@ -138,6 +158,20 @@
           <button class="gram-btn" data-index="{{index}}" data-delta="{{10}}" bindtap="onStep">＋</button>
         </view>
         <button class="remove-btn" data-index="{{index}}" bindtap="onRemove">移除</button>
+      </view>
+
+      <view wx:if="{{item.portionRefs.length > 0}}" class="portion-refs">
+        <text class="portion-refs-label">参照</text>
+        <button
+          wx:for="{{item.portionRefs}}"
+          wx:for-item="ref"
+          wx:for-index="refIndex"
+          wx:key="grams"
+          class="portion-ref"
+          data-index="{{index}}"
+          data-grams="{{ref.grams}}"
+          bindtap="onSetPortion"
+        >{{ref.label}} ≈ {{ref.grams}}g</button>
       </view>
 
       <view class="food-foot">

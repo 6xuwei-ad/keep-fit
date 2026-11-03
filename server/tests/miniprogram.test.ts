@@ -81,6 +81,31 @@ test("小程序身体数据与目标计算与服务端一致", () => {
   assert.equal(mini.isComplete(incomplete), sharedIsBodyComplete(incomplete));
 });
 
+test("小程序份量参照与剩饭比例计算正确", () => {
+  const portion = loadCommonJs("miniprogram/utils/portion.js");
+
+  assert.deepEqual(portion.parseHint("半盒 · 150g"), { label: "半盒", grams: 150 });
+  assert.equal(portion.parseHint("按实际份量调整"), null);
+
+  const refs = portion.referencesFor({ category: "staple", portionHint: "一碗 · 150g" });
+  assert.ok(refs.some((ref: { grams: number }) => ref.grams === 150));
+  assert.ok(refs.some((ref: { grams: number }) => ref.grams === 100));
+
+  const scaled = portion.applyRatio([{ grams: 200, baseGrams: 200 }, { grams: 100 }], 0.5);
+  assert.deepEqual(
+    scaled.map((item: { grams: number }) => item.grams),
+    [100, 50]
+  );
+  assert.deepEqual(
+    scaled.map((item: { baseGrams: number }) => item.baseGrams),
+    [200, 100]
+  );
+
+  const adjusted = portion.setGrams({ grams: 100, baseGrams: 100 }, 60, 0.5);
+  assert.equal(adjusted.grams, 60);
+  assert.equal(adjusted.baseGrams, 120);
+});
+
 test("小程序页面与组件脚本可以在微信运行时外壳下加载", () => {
   const files = [
     "miniprogram/app.js",
