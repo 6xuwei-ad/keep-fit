@@ -11,10 +11,10 @@
     "dev": "concurrently -k -n api,web -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "node --watch --experimental-strip-types server/index.ts",
     "dev:client": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc -p tsconfig.web.json --noEmit && vite build",
     "start": "cross-env NODE_ENV=production node --experimental-strip-types server/index.ts",
     "preview": "cross-env NODE_ENV=production node --experimental-strip-types server/index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.web.json --noEmit",
     "check:mini": "node scripts/check-miniprogram.mjs",
     "test": "node --experimental-strip-types --test --test-isolation=none server/tests/nutrition.test.ts server/tests/suggestions.test.ts server/tests/vision.test.ts server/tests/session.test.ts server/tests/miniprogram.test.ts server/tests/api.test.ts"
   },

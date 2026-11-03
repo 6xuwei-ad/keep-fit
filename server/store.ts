@@ -10,6 +10,9 @@ import type {
   FoodItem,
   Goal,
   Meal,
+  MealItemInput,
+  MealTemplate,
+  MealType,
   NutritionFacts,
   Profile,
   Sex,
@@ -71,6 +74,33 @@ interface ItemRow {
   fat: number;
   fiber: number;
   source: string;
+}
+
+interface TemplateRow {
+  id: string;
+  device_id: string;
+  name: string;
+  meal_type: string;
+  image_url: string | null;
+  items_json: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  use_count: number;
+  created_at: string;
+  updated_at: string;
+  last_used_at: string;
+}
+
+export interface RecentFoodRecord {
+  foodId: string | null;
+  name: string;
+  emoji: string;
+  category: FoodCategory;
+  per100g: NutritionFacts;
+  lastEatenAt: string;
 }
 
 function mapProfile(row: ProfileRow): Profile {
@@ -145,6 +175,28 @@ function mapItem(row: ItemRow): FoodItem {
   };
 }
 
+function mapTemplate(row: TemplateRow): MealTemplate {
+  const items = JSON.parse(row.items_json) as MealItemInput[];
+  return {
+    id: row.id,
+    name: row.name,
+    mealType: row.meal_type as MealType,
+    imageUrl: row.image_url,
+    items,
+    itemCount: items.length,
+    totals: {
+      kcal: row.calories,
+      protein: row.protein,
+      carbs: row.carbs,
+      fat: row.fat,
+      fiber: row.fiber
+    },
+    useCount: row.use_count,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at
+  };
+}
+
 export class Store {
   private readonly db: DatabaseSync;
 
@@ -216,8 +268,29 @@ export class Store {
         FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS meal_templates (
+        id TEXT PRIMARY KEY,
+        device_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        meal_type TEXT NOT NULL,
+        image_url TEXT,
+        items_json TEXT NOT NULL,
+        calories REAL NOT NULL,
+        protein REAL NOT NULL,
+        carbs REAL NOT NULL,
+        fat REAL NOT NULL,
+        fiber REAL NOT NULL,
+        use_count INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_used_at TEXT NOT NULL,
+        FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE
+      );
+
       CREATE INDEX IF NOT EXISTS idx_meals_device_date ON meals(device_id, date, eaten_at);
       CREATE INDEX IF NOT EXISTS idx_items_meal ON meal_items(meal_id, order_index);
+      CREATE INDEX IF NOT EXISTS idx_items_food ON meal_items(food_id);
+      CREATE INDEX IF NOT EXISTS idx_templates_device ON meal_templates(device_id, last_used_at);
     `);
 
     // 老版本数据库没有身体数据字段，逐列补齐，保留已有目标值。
@@ -433,6 +506,169 @@ export class Store {
       .prepare("DELETE FROM meals WHERE device_id = ? AND id = ?")
       .run(deviceId, id);
     return Number(result.changes) > 0;
+  }
+
+  countTemplates(deviceId: string): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS count FROM meal_templates WHERE device_id = ?")
+      .get(deviceId) as { count: number } | undefined;
+    return Number(row?.count ?? 0);
+  }
+
+  listTemplates(deviceId: string, limit = 12): MealTemplate[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM meal_templates WHERE device_id = ?
+         ORDER BY last_used_at DESC, created_at DESC LIMIT ?`
+      )
+      .all(deviceId, limit) as unknown as TemplateRow[];
+    return rows.map(mapTemplate);
+  }
+
+  getTemplate(deviceId: string, id: string): MealTemplate | null {
+    const row = this.db
+      .prepare("SELECT * FROM meal_templates WHERE device_id = ? AND id = ?")
+      .get(deviceId, id) as TemplateRow | undefined;
+    return row ? mapTemplate(row) : null;
+  }
+
+  /**
+   * 同名、同餐次的常用餐只保留一份，重复保存视为更新，
+   * 避免用户反复点“存为常用餐”产生一堆重复模板。
+   */
+  upsertTemplate(
+    deviceId: string,
+    input: {
+      name: string;
+      mealType: MealType;
+      imageUrl: string | null;
+      items: MealItemInput[];
+      totals: NutritionFacts;
+    }
+  ): { template: MealTemplate; created: boolean } {
+    this.ensureProfile(deviceId);
+    const itemsJson = JSON.stringify(input.items);
+    const now = new Date().toISOString();
+    const existing = this.db
+      .prepare(
+        "SELECT * FROM meal_templates WHERE device_id = ? AND meal_type = ? AND name = ?"
+      )
+      .get(deviceId, input.mealType, input.name) as TemplateRow | undefined;
+
+    if (existing) {
+      this.db
+        .prepare(
+          `UPDATE meal_templates
+           SET image_url = ?, items_json = ?, calories = ?, protein = ?, carbs = ?,
+               fat = ?, fiber = ?, updated_at = ?
+           WHERE device_id = ? AND id = ?`
+        )
+        .run(
+          input.imageUrl,
+          itemsJson,
+          input.totals.kcal,
+          input.totals.protein,
+          input.totals.carbs,
+          input.totals.fat,
+          input.totals.fiber,
+          now,
+          deviceId,
+          existing.id
+        );
+      return { template: this.getTemplate(deviceId, existing.id)!, created: false };
+    }
+
+    // 每个身份最多保留 50 个常用餐，优先淘汰从未使用、最久未打开的。
+    const total = this.countTemplates(deviceId);
+    if (total >= 50) {
+      const stale = this.db
+        .prepare(
+          `SELECT id FROM meal_templates WHERE device_id = ?
+           ORDER BY use_count ASC, last_used_at ASC LIMIT ?`
+        )
+        .all(deviceId, total - 49) as unknown as Array<{ id: string }>;
+      const remove = this.db.prepare(
+        "DELETE FROM meal_templates WHERE device_id = ? AND id = ?"
+      );
+      for (const entry of stale) remove.run(deviceId, entry.id);
+    }
+
+    const id = randomUUID();
+    this.db
+      .prepare(
+        `INSERT INTO meal_templates
+          (id, device_id, name, meal_type, image_url, items_json, calories, protein,
+           carbs, fat, fiber, use_count, created_at, updated_at, last_used_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
+      )
+      .run(
+        id,
+        deviceId,
+        input.name,
+        input.mealType,
+        input.imageUrl,
+        itemsJson,
+        input.totals.kcal,
+        input.totals.protein,
+        input.totals.carbs,
+        input.totals.fat,
+        input.totals.fiber,
+        now,
+        now,
+        now
+      );
+
+    return { template: this.getTemplate(deviceId, id)!, created: true };
+  }
+
+  touchTemplate(deviceId: string, id: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE meal_templates
+         SET use_count = use_count + 1, last_used_at = ?, updated_at = ?
+         WHERE device_id = ? AND id = ?`
+      )
+      .run(now, now, deviceId, id);
+  }
+
+  deleteTemplate(deviceId: string, id: string): boolean {
+    const result = this.db
+      .prepare("DELETE FROM meal_templates WHERE device_id = ? AND id = ?")
+      .run(deviceId, id);
+    return Number(result.changes) > 0;
+  }
+
+  /** 最近吃过的食物，按食物去重，用于食物搜索的快捷入口。 */
+  listRecentFoods(deviceId: string, limit = 20): RecentFoodRecord[] {
+    const rows = this.db
+      .prepare(
+        `SELECT mi.food_id, mi.name, mi.emoji, mi.category, mi.per100g_json,
+                MAX(m.eaten_at) AS last_eaten
+         FROM meal_items mi
+         JOIN meals m ON m.id = mi.meal_id
+         WHERE m.device_id = ?
+         GROUP BY COALESCE(mi.food_id, mi.name)
+         ORDER BY last_eaten DESC
+         LIMIT ?`
+      )
+      .all(deviceId, limit) as unknown as Array<{
+      food_id: string | null;
+      name: string;
+      emoji: string;
+      category: string;
+      per100g_json: string;
+      last_eaten: string;
+    }>;
+
+    return rows.map((row) => ({
+      foodId: row.food_id,
+      name: row.name,
+      emoji: row.emoji,
+      category: row.category as FoodCategory,
+      per100g: JSON.parse(row.per100g_json) as NutritionFacts,
+      lastEatenAt: row.last_eaten
+    }));
   }
 
   close(): void {

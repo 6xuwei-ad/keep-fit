@@ -5,7 +5,9 @@ import type {
   DayResponse,
   FoodCatalogItem,
   Meal,
+  MealTemplate,
   Profile,
+  RepeatResponse,
   Targets
 } from "../../shared/types";
 
@@ -121,4 +123,38 @@ export async function searchFoods(query: string): Promise<FoodCatalogItem[]> {
     `/api/foods?q=${encodeURIComponent(query)}`
   );
   return data.foods;
+}
+
+export async function fetchRecentFoods(): Promise<FoodCatalogItem[]> {
+  const data = await request<{ foods: FoodCatalogItem[] }>("/api/foods?recent=1");
+  return data.foods;
+}
+
+export async function fetchRepeat(): Promise<RepeatResponse> {
+  return request<RepeatResponse>("/api/repeat");
+}
+
+export async function saveTemplate(
+  mealId: string
+): Promise<{ template: MealTemplate; updated: boolean }> {
+  return request<{ template: MealTemplate; updated: boolean }>("/api/templates", {
+    method: "POST",
+    body: JSON.stringify({ mealId })
+  });
+}
+
+export async function logTemplate(id: string, date: string): Promise<Meal> {
+  const data = await request<{ meal: Meal }>(`/api/templates/${id}/log`, {
+    method: "POST",
+    body: JSON.stringify({ date })
+  });
+  return data.meal;
+}
+
+export async function copyMeal(id: string, date: string): Promise<Meal> {
+  const data = await request<{ meal: Meal }>(`/api/meals/${id}/copy`, {
+    method: "POST",
+    body: JSON.stringify({ date })
+  });
+  return data.meal;
 }

@@ -216,7 +216,7 @@ shike/
 │
 ├─ Dockerfile
 ├─ vite.config.ts
-├─ tsconfig.json
+├─ tsconfig.web.json                 # Web/后端；刻意避开根 tsconfig.json，防止 DevTools 用 TS 4.1 检查
 ├─ package.json
 └─ .env.example
 ```
@@ -333,7 +333,7 @@ app.ts
   ├─ Zod 请求校验
   └─ 路由
        ├─ analyze → image 魔数 → saveImage → vision → analysis
-       └─ meals   → Zod → makeFoodItem → itemsTotal → Store.insertMeal
+       └─ meals / templates → Zod → makeFoodItem → itemsTotal → Store.insertMeal
   ↓
 services/                  纯业务
   ├─ vision.ts             外部模型边界
@@ -353,7 +353,7 @@ store.ts                   SQLite，唯一数据访问入口
 - `PRAGMA foreign_keys = ON`；
 - `insertMeal` 使用 `BEGIN IMMEDIATE / COMMIT / ROLLBACK` 保证 meal 与 items 原子性；
 - 所有 SQL 使用 prepared statement 参数绑定；
-- `meals(device_id, date, eaten_at)` 与 `meal_items(meal_id, order_index)` 有索引。
+- `meals(device_id, date, eaten_at)`、`meal_items(meal_id, order_index)` 与 `meal_templates(device_id, last_used_at)` 有索引。
 
 ### 6.3 静态资源
 
@@ -400,7 +400,31 @@ sequenceDiagram
   A-->>W: 当天 meals + summary + advice
 ```
 
-### 7.2 失败与降级矩阵
+### 7.2 一键再吃
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 用户
+  participant W as 小程序
+  participant A as Express
+  participant D as SQLite
+  participant N as 营养引擎
+
+  U->>W: 首页点「常用餐」或「复制昨天」
+  W->>A: POST /api/templates/:id/log<br/>或 POST /api/meals/:id/copy
+  A->>D: 读取模板 / 原餐
+  A->>N: makeFoodItem 重新解析并求和
+  N-->>A: 新的 items + totals
+  A->>D: insertMeal（新 id、指定日期）
+  A->>D: 常用餐 use_count++ / last_used_at
+  A-->>W: 201 Meal
+  W->>A: GET /api/day?date=today
+```
+
+两条入口共用同一套「复制 items → 服务端重算 → 新建 meal」逻辑；模板只存快照，复制时生成新的 meal id，不复用原记录。
+
+### 7.3 失败与降级矩阵
 
 | 情况 | 行为 | 用户看到 |
 | --- | --- | --- |
@@ -527,12 +551,19 @@ inferMealType(date)
 ```mermaid
 erDiagram
   PROFILES ||--o{ MEALS : "device_id"
+  PROFILES ||--o{ MEAL_TEMPLATES : "device_id"
   MEALS ||--|{ MEAL_ITEMS : "meal_id"
 
   PROFILES {
     TEXT device_id PK
     TEXT name
     TEXT goal
+    TEXT sex
+    INTEGER age
+    REAL height_cm
+    REAL weight_kg
+    TEXT activity_level
+    TEXT targets_mode
     REAL target_kcal
     REAL target_protein
     REAL target_carbs
@@ -578,12 +609,31 @@ erDiagram
     TEXT source
     INTEGER order_index
   }
+
+  MEAL_TEMPLATES {
+    TEXT id PK
+    TEXT device_id FK
+    TEXT name
+    TEXT meal_type
+    TEXT image_url
+    TEXT items_json
+    REAL calories
+    REAL protein
+    REAL carbs
+    REAL fat
+    REAL fiber
+    INTEGER use_count
+    TEXT created_at
+    TEXT updated_at
+    TEXT last_used_at
+  }
 ```
 
 设计说明：
 
 - `profiles.device_id` 当前是设备标识；生产环境应改为 `users.id` 并在服务端建立设备→用户映射。
 - `meals` 存汇总值，避免日记列表每次重新求和；`meal_items` 存明细与 `per100g_json` 快照，保证历史可解释。
+- `meal_templates` 存 `items_json` 快照和汇总值；一键记录时仍会重新走 `makeFoodItem` 计算，快照只用于展示，不作为营养事实。
 - `date` 是查询键（YYYY-MM-DD），`eaten_at` 是完整时间；客户端选择日期，服务端默认使用上海时区。
 - `source` 区分 `database` / `ai`，便于前端展示「模型估值」和后续质量分析。
 - `engine` 记录本次使用的模型名或「演示引擎」，用于问题追踪。
@@ -601,12 +651,18 @@ POST   /api/auth/wechat      { code } → token（未配置返回 501）
 GET    /api/profile
 PUT    /api/profile
 GET    /api/foods?q=
+GET    /api/foods?recent=1   最近吃过的食物
 POST   /api/analyze          multipart/form-data, field=image
 POST   /api/analyze/demo     内置示例餐盘
 GET    /api/day?date=YYYY-MM-DD
 GET    /api/meals?date=YYYY-MM-DD
 POST   /api/meals            application/json
+POST   /api/meals/:id/copy   复制一餐到指定日期
 DELETE /api/meals/:id
+GET    /api/repeat           首页常用餐 + 昨天餐次
+POST   /api/templates        把一餐存为常用餐
+POST   /api/templates/:id/log  一键记录常用餐
+DELETE /api/templates/:id
 ```
 
 个人接口支持微信会话或开发设备 ID：

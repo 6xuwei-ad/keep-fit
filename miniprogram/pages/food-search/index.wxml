@@ -17,6 +17,27 @@
     <text>营养值按每 100g</text>
   </view>
 
+  <view wx:if="{{!query && recent.length > 0}}" class="recent-block">
+    <view class="recent-head">
+      <text class="recent-title">最近吃过</text>
+      <text class="recent-hint">点一下加回这一餐</text>
+    </view>
+    <scroll-view scroll-x class="recent-scroll" show-scrollbar="{{false}}">
+      <view
+        wx:for="{{recent}}"
+        wx:key="id"
+        class="recent-chip"
+        data-index="{{index}}"
+        bindtap="onAddRecent"
+      >
+        <text class="recent-emoji">{{item.emoji}}</text>
+        <text class="recent-name">{{item.name}}</text>
+        <text class="recent-kcal">{{item.kcal}} kcal</text>
+        <text class="recent-add">＋</text>
+      </view>
+    </scroll-view>
+  </view>
+
   <view wx:if="{{loading}}" class="state">正在查找…</view>
   <view wx:elif="{{error}}" class="state error">{{error}}</view>
   <view wx:elif="{{foods.length == 0}}" class="state">没有找到，换个关键词试试</view>

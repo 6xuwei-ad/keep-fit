@@ -74,6 +74,14 @@
       </view>
     </view>
 
+    <view class="template-toggle {{saveAsTemplate ? 'on' : ''}}" bindtap="onToggleTemplate">
+      <view class="toggle-box">{{saveAsTemplate ? '✓' : ''}}</view>
+      <view class="toggle-copy">
+        <text class="toggle-title">保存为常用餐</text>
+        <text class="toggle-sub">下次在首页一键记录，不用重新拍照</text>
+      </view>
+    </view>
+
     <button class="btn btn-primary btn-full" bindtap="onSave" disabled="{{saving}}">
       {{saving ? '正在保存…' : '保存到今日饮食'}}
     </button>

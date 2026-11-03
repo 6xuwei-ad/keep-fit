@@ -5,7 +5,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import type { AddressInfo } from "node:net";
-import type { AnalysisResult, DayResponse, Meal, Profile } from "../../shared/types.ts";
+import { localDateKey, shiftDateKey } from "../../shared/nutrition.ts";
+import type {
+  AnalysisResult,
+  DayResponse,
+  Meal,
+  MealTemplate,
+  Profile,
+  RepeatResponse
+} from "../../shared/types.ts";
 import { createApp } from "../app.ts";
 import { loadConfig } from "../config.ts";
 import { signSession } from "../lib/session.ts";
@@ -156,6 +164,118 @@ test("识别、保存、汇总、删除的完整 API 流程", async (t) => {
   assert.equal(dayBody.summary.meals.length, 1);
   assert.equal(dayBody.summary.advice.length, 3);
   assert.ok(dayBody.summary.caloriePercent > 0);
+
+  const templateCreated = await fetch(`${base}/api/templates`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({ mealId: savedBody.meal.id })
+  });
+  assert.equal(templateCreated.status, 201);
+  const templateBody = (await templateCreated.json()) as {
+    template: MealTemplate;
+    updated: boolean;
+  };
+  assert.equal(templateBody.updated, false);
+  assert.equal(templateBody.template.itemCount, 8);
+  assert.equal(templateBody.template.mealType, "lunch");
+  assert.ok(Math.abs(templateBody.template.totals.kcal - savedBody.meal.totals.kcal) < 0.1);
+
+  const templateAgain = await fetch(`${base}/api/templates`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({ mealId: savedBody.meal.id })
+  });
+  assert.equal(templateAgain.status, 200);
+  const templateAgainBody = (await templateAgain.json()) as {
+    template: MealTemplate;
+    updated: boolean;
+  };
+  assert.equal(templateAgainBody.updated, true);
+  assert.equal(templateAgainBody.template.id, templateBody.template.id);
+
+  const repeat = await get("/api/repeat");
+  assert.equal(repeat.status, 200);
+  const repeatBody = (await repeat.json()) as RepeatResponse;
+  assert.equal(repeatBody.templates.length, 1);
+  assert.equal(repeatBody.templates[0]!.id, templateBody.template.id);
+
+  const logged = await fetch(`${base}/api/templates/${templateBody.template.id}/log`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({ date: "2026-11-01" })
+  });
+  assert.equal(logged.status, 201);
+  const loggedBody = (await logged.json()) as { meal: Meal };
+  assert.equal(loggedBody.meal.date, "2026-11-01");
+  assert.equal(loggedBody.meal.items.length, 8);
+  assert.equal(loggedBody.meal.imageUrl, null);
+  assert.ok(Math.abs(loggedBody.meal.totals.kcal - savedBody.meal.totals.kcal) < 0.1);
+
+  const copied = await fetch(`${base}/api/meals/${savedBody.meal.id}/copy`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({ date: "2026-11-01" })
+  });
+  assert.equal(copied.status, 201);
+  const copiedBody = (await copied.json()) as { meal: Meal };
+  assert.notEqual(copiedBody.meal.id, savedBody.meal.id);
+  assert.equal(copiedBody.meal.date, "2026-11-01");
+  assert.equal(copiedBody.meal.items.length, 8);
+
+  const dayTwo = await get("/api/day?date=2026-11-01");
+  const dayTwoBody = (await dayTwo.json()) as DayResponse;
+  assert.equal(dayTwoBody.summary.meals.length, 2);
+
+  const yesterdayKey = shiftDateKey(localDateKey(), -1);
+  const copiedYesterday = await fetch(`${base}/api/meals/${savedBody.meal.id}/copy`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({ date: yesterdayKey })
+  });
+  assert.equal(copiedYesterday.status, 201);
+  const copiedYesterdayBody = (await copiedYesterday.json()) as { meal: Meal };
+  const repeatWithYesterday = await get("/api/repeat");
+  const repeatWithYesterdayBody = (await repeatWithYesterday.json()) as RepeatResponse;
+  assert.equal(repeatWithYesterdayBody.yesterday.length, 1);
+  assert.equal(repeatWithYesterdayBody.yesterday[0]!.id, copiedYesterdayBody.meal.id);
+
+  const recentFoods = await get("/api/foods?recent=1");
+  assert.equal(recentFoods.status, 200);
+  const recentBody = (await recentFoods.json()) as {
+    foods: Array<{ id: string; name: string }>;
+  };
+  assert.ok(recentBody.foods.some((food) => food.id === "silken-tofu"));
+
+  const repeatAfterLog = await get("/api/repeat");
+  const repeatAfterLogBody = (await repeatAfterLog.json()) as RepeatResponse;
+  assert.equal(repeatAfterLogBody.templates[0]!.useCount, 1);
+
+  const foreignRepeat = await fetch(`${base}/api/repeat`, {
+    headers: { "x-device-id": "test-device-0002" }
+  });
+  const foreignRepeatBody = (await foreignRepeat.json()) as RepeatResponse;
+  assert.equal(foreignRepeatBody.templates.length, 0);
+
+  const missingCopy = await fetch(
+    `${base}/api/meals/00000000-0000-4000-8000-000000000000/copy`,
+    {
+      method: "POST",
+      headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    }
+  );
+  assert.equal(missingCopy.status, 404);
+  const missingCopyBody = (await missingCopy.json()) as { code: string };
+  assert.equal(missingCopyBody.code, "MEAL_NOT_FOUND");
+
+  const templateDeleted = await fetch(`${base}/api/templates/${templateBody.template.id}`, {
+    method: "DELETE",
+    headers: { "x-device-id": DEVICE }
+  });
+  assert.equal(templateDeleted.status, 204);
+  const repeatAfterDelete = await get("/api/repeat");
+  const repeatAfterDeleteBody = (await repeatAfterDelete.json()) as RepeatResponse;
+  assert.equal(repeatAfterDeleteBody.templates.length, 0);
 
   const invalid = await fetch(`${base}/api/meals`, {
     method: "POST",

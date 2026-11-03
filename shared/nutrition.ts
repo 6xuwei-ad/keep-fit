@@ -114,6 +114,14 @@ export function localDateKey(date = new Date(), timeZone = "Asia/Shanghai"): str
   return `${pick("year")}-${pick("month")}-${pick("day")}`;
 }
 
+/** 在 YYYY-MM-DD 上前后移动天数，避免本地时区与夏令时影响。 */
+export function shiftDateKey(key: string, offset: number): string {
+  const [year = 1970, month = 1, day = 1] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
 export function inferMealType(date = new Date(), timeZone = "Asia/Shanghai"): "breakfast" | "lunch" | "dinner" | "snack" {
   const hour = Number(
     new Intl.DateTimeFormat("en-US", {

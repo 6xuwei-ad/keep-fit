@@ -34,7 +34,7 @@
 | 校验 | Zod 4 | 所有用户输入、模型 JSON、保存请求都有运行时边界 |
 | 视觉模型 | 任意 OpenAI 兼容视觉模型 | 不绑定供应商；默认 `gpt-4.1-mini`，可换 Gemini 兼容网关、Qwen-VL 等 |
 | 图片处理 | 浏览器 Canvas + 服务端魔数校验 | 上传前压缩到 1600px / ≤1.25MB，减少流量与模型成本 |
-| 测试 | `node:test` | 零测试框架依赖，16 个单元/API/模型/小程序逻辑测试 |
+| 测试 | `node:test` | 零测试框架依赖，17 个单元/API/模型/小程序逻辑测试 |
 
 **形态说明：** 微信原生客户端在 `miniprogram/`，用微信开发者工具导入仓库根目录即可；`project.config.json` 已指向 `miniprogram/`。默认使用 `touristappid` 与设备模式，配置 AppID 后启用微信登录。
 
@@ -47,6 +47,7 @@
 - **可以补充漏识别食材**：内置 80+ 食物的搜索库，手动加入牛油果、米饭、鸡胸肉等。
 - **不是只给一个热量数字**：同时给出蛋白质 / 碳水 / 脂肪 / 纤维、餐盘均衡度评分、三条针对当前目标的建议。
 - **今日日记**：按天查看每一餐、全天摄入、目标完成度与剩余额度，可删除记录。
+- **常吃的不用重拍**：每餐可存为「常用餐」，首页一键记录；也能把昨天的早餐、午餐复制到今天；食物搜索优先显示最近吃过的 20 种。
 - **目标可调**：减脂 / 维持 / 增肌三套推荐值；填写性别、年龄、身高、体重和活动量后，会按 Mifflin-St Jeor 估算 BMR/TDEE 并自动生成目标，也可以手动覆盖。
 - **无模型可体验**：未配置 API Key 时自动进入演示模式，使用内置示例餐盘完整走通流程。
 - **微信登录可选**：配置 `WECHAT_APPID` / `WECHAT_SECRET` 后使用 `wx.login` + `openid` 会话；未配置时自动回落设备模式。
@@ -86,6 +87,8 @@ npm run dev
 5. 首页点击「先看看示例餐盘」，走通识别 → 改克数 → 保存 → 日记。
 
 真机调试时，把 `miniprogram/config.js` 的 `API_BASE` 改成电脑局域网 IP；正式发布必须使用 HTTPS 并配置 request / uploadFile / downloadFile 合法域名。
+
+> Web 与后端的 TypeScript 配置放在 `tsconfig.web.json`，刻意不命名为根 `tsconfig.json`。微信开发者工具会读取根 `tsconfig.json` 并用内置 TypeScript 4.1 检查，导致 ES2022、Bundler 等选项在「问题」面板报错；小程序本身不使用 TypeScript，因此不需要这个文件。
 
 详见 [miniprogram/README.md](miniprogram/README.md)。
 
@@ -145,7 +148,7 @@ docker run --rm -p 8787:8787 \
 | `npm run dev:client` | 仅启动 Vite |
 | `npm run build` | 类型检查 + 生产构建到 `dist/` |
 | `npm start` | 生产模式启动，托管 `dist/` 与 API |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run typecheck` | `tsc -p tsconfig.web.json --noEmit` |
 | `npm run check:mini` | 校验小程序 JSON / JS / WXSS、页面文件和 tabBar 图标 |
 | `npm test` | 16 个营养、建议、视觉解析、会话、API 与小程序逻辑测试 |
 

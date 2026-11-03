@@ -154,6 +154,36 @@ export interface Meal extends Omit<CreateMealInput, "items"> {
   createdAt: string;
 }
 
+/** 保存下来的一餐，用来在首页或日记里一键重记。 */
+export interface MealTemplate {
+  id: string;
+  name: string;
+  mealType: MealType;
+  imageUrl: string | null;
+  items: MealItemInput[];
+  itemCount: number;
+  totals: NutritionFacts;
+  useCount: number;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+/** 昨天的某餐，首页可一键复制到今天。 */
+export interface RepeatMeal {
+  id: string;
+  name: string;
+  mealType: MealType;
+  imageUrl: string | null;
+  emoji: string;
+  itemCount: number;
+  totals: NutritionFacts;
+}
+
+export interface RepeatResponse {
+  templates: MealTemplate[];
+  yesterday: RepeatMeal[];
+}
+
 export interface DaySummary {
   date: string;
   meals: Meal[];

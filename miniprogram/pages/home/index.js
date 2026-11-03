@@ -67,6 +67,17 @@ function compressPhoto(filePath) {
   });
 }
 
+const MEAL_TYPE_LABELS = {
+  breakfast: "早餐",
+  lunch: "午餐",
+  dinner: "晚餐",
+  snack: "加餐"
+};
+
+function typeLabel(type) {
+  return MEAL_TYPE_LABELS[type] || "加餐";
+}
+
 function formatMeal(meal) {
   return {
     id: meal.id,
@@ -74,14 +85,32 @@ function formatMeal(meal) {
     image: api.assetUrl(meal.imageUrl),
     emoji: (meal.items && meal.items[0] && meal.items[0].emoji) || "🍽️",
     time: format.clock(meal.eatenAt),
-    typeLabel: {
-      breakfast: "早餐",
-      lunch: "午餐",
-      dinner: "晚餐",
-      snack: "加餐"
-    }[meal.mealType] || "加餐",
+    typeLabel: typeLabel(meal.mealType),
     kcal: Math.round(meal.totals.kcal),
     protein: Math.round(meal.totals.protein)
+  };
+}
+
+function formatTemplate(template) {
+  const first = (template.items && template.items[0]) || {};
+  return {
+    id: template.id,
+    name: template.name,
+    emoji: first.emoji || "🍽️",
+    typeLabel: typeLabel(template.mealType),
+    itemCount: template.itemCount || (template.items || []).length,
+    kcal: Math.round(template.totals.kcal)
+  };
+}
+
+function formatYesterday(meal) {
+  return {
+    id: meal.id,
+    name: meal.name,
+    emoji: meal.emoji || "🍽️",
+    typeLabel: typeLabel(meal.mealType),
+    itemCount: meal.itemCount || 0,
+    kcal: Math.round(meal.totals.kcal)
   };
 }
 
@@ -95,6 +124,10 @@ Page({
     summary: EMPTY_SUMMARY,
     homeAdvice: [],
     recent: [],
+    templates: [],
+    yesterdayMeals: [],
+    quickVisible: false,
+    quickBusy: false,
     remainingText: "1800",
     isOver: false,
     dateText: "今天",
@@ -128,10 +161,18 @@ Page({
 
     return app
       .ready()
-      .then(() => Promise.all([api.getDay(today), api.getMeta()]))
+      .then(() =>
+        Promise.all([
+          api.getDay(today),
+          api.getMeta(),
+          // 常用餐/昨天是增强入口，旧服务端或接口异常时不应拖垮首页。
+          api.getRepeat().catch(() => ({ templates: [], yesterday: [] }))
+        ])
+      )
       .then((results) => {
         const day = results[0];
         const meta = results[1];
+        const repeat = results[2] || {};
         const app = getApp();
         if (day.profile) app.globalData.profile = day.profile;
         const summary = day.summary || EMPTY_SUMMARY;
@@ -140,6 +181,8 @@ Page({
         const meals = (summary.meals || []).map(formatMeal);
         const remainingKcal = Math.round(remaining.kcal);
         const percent = summary.caloriePercent || 0;
+        const templates = (repeat.templates || []).map(formatTemplate);
+        const yesterdayMeals = (repeat.yesterday || []).map(formatYesterday);
         let todayNote = "今天还没有记录。第一张照片，就是更清楚饮食的开始。";
         if (meals.length > 0) {
           if (percent >= 100) todayNote = "今天的目标基本达成，晚些时候清淡一点就好。";
@@ -163,6 +206,9 @@ Page({
           },
           homeAdvice: (summary.advice || []).slice(0, 2),
           recent: meals.slice(-3).reverse(),
+          templates,
+          yesterdayMeals,
+          quickVisible: templates.length > 0 || yesterdayMeals.length > 0,
           remainingText: String(Math.abs(remainingKcal)),
           isOver: remainingKcal < 0,
           dateText: format.friendlyDate(summary.date || today),
@@ -231,6 +277,63 @@ Page({
     app.globalData.analysis = result.analysis;
     app.globalData.suggestedMealType = result.suggestedMealType || "lunch";
     wx.navigateTo({ url: "/pages/review/index" });
+  },
+
+  startQuickAdd(task) {
+    if (this.data.quickBusy) return;
+    this.setData({ quickBusy: true });
+    wx.showLoading({ title: "正在记录…", mask: true });
+    task()
+      .then(() => {
+        wx.hideLoading();
+        this.setData({ quickBusy: false });
+        wx.showToast({ title: "已加入今日饮食", icon: "success" });
+        this.loadData(true);
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        this.setData({ quickBusy: false });
+        wx.showToast({ title: error.message || "记录失败", icon: "none" });
+      });
+  },
+
+  onLogTemplate(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    this.startQuickAdd(() => api.logTemplate(id, format.dateKey()));
+  },
+
+  onCopyMeal(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    this.startQuickAdd(() => api.copyMeal(id, format.dateKey()));
+  },
+
+  onDeleteTemplate(event) {
+    const id = event.currentTarget.dataset.id;
+    const name = event.currentTarget.dataset.name || "这个常用餐";
+    if (!id) return;
+    wx.showModal({
+      title: "删除常用餐",
+      content: `确定删除「${name}」吗？以后仍可在日记里重新保存。`,
+      confirmText: "删除",
+      confirmColor: "#ED6B4C",
+      success: (result) => {
+        if (!result.confirm) return;
+        wx.showLoading({ title: "正在删除…", mask: true });
+        api
+          .deleteTemplate(id)
+          .then(() => {
+            wx.hideLoading();
+            wx.showToast({ title: "已删除", icon: "success" });
+            this.loadData(true);
+          })
+          .catch((error) => {
+            wx.hideLoading();
+            wx.showToast({ title: error.message || "删除失败", icon: "none" });
+          });
+      }
+    });
   },
 
   onShareAppMessage() {

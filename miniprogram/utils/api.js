@@ -150,6 +150,24 @@ module.exports = {
   searchFoods(query) {
     return request(`/api/foods?q=${encodeURIComponent(query || "")}`);
   },
+  getRecentFoods() {
+    return request("/api/foods?recent=1");
+  },
+  getRepeat() {
+    return request("/api/repeat");
+  },
+  saveTemplate(mealId) {
+    return request("/api/templates", { method: "POST", data: { mealId } });
+  },
+  logTemplate(id, date) {
+    return request(`/api/templates/${id}/log`, { method: "POST", data: { date } });
+  },
+  deleteTemplate(id) {
+    return request(`/api/templates/${id}`, { method: "DELETE" });
+  },
+  copyMeal(id, date) {
+    return request(`/api/meals/${id}/copy`, { method: "POST", data: { date } });
+  },
   analyzeImage(filePath) {
     return uploadImage(filePath);
   },

@@ -5,12 +5,14 @@ Page({
   data: {
     query: "",
     foods: [],
+    recent: [],
     loading: true,
     error: ""
   },
 
   onLoad() {
     this.loadFoods("");
+    this.loadRecent();
   },
 
   onInput(event) {
@@ -47,12 +49,41 @@ Page({
       });
   },
 
-  onAdd(event) {
-    const index = Number(event.currentTarget.dataset.index);
-    const food = this.data.foods[index];
+  loadRecent() {
+    api
+      .getRecentFoods()
+      .then((result) => {
+        const recent = (result.foods || []).slice(0, 20).map((food) => ({
+          id: food.id,
+          name: food.name,
+          emoji: food.emoji,
+          categoryLabel: CATEGORY_LABELS[food.category] || "食物",
+          kcal: food.per100g.kcal,
+          per100g: food.per100g,
+          portions: food.portions || [],
+          category: food.category
+        }));
+        this.setData({ recent });
+      })
+      .catch(() => {
+        // 最近吃过只是快捷入口，失败时保持普通搜索可用。
+      });
+  },
+
+  pickFood(food) {
     if (!food) return;
     getApp().globalData.pendingFood = food;
     wx.navigateBack();
+  },
+
+  onAdd(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    this.pickFood(this.data.foods[index]);
+  },
+
+  onAddRecent(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    this.pickFood(this.data.recent[index]);
   },
 
   onShareAppMessage() {

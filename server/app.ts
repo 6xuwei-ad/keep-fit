@@ -11,7 +11,10 @@ import type {
   CreateMealInput,
   DaySummary,
   FoodCategory,
+  FoodItem,
   Goal,
+  Meal,
+  MealItemInput,
   MealType,
   NutritionFacts,
   Profile,
@@ -27,12 +30,13 @@ import {
   inferMealType,
   localDateKey,
   round,
+  shiftDateKey,
   sumNutrition
 } from "../shared/nutrition.ts";
 import { AppError } from "./lib/errors.ts";
 import { detectImage, saveImage } from "./lib/image.ts";
 import { signSession, verifySession } from "./lib/session.ts";
-import { searchFoods } from "./data/foods.ts";
+import { FOOD_BY_ID, searchFoods } from "./data/foods.ts";
 import { assembleAnalysis } from "./services/analysis.ts";
 import { itemsTotal, makeFoodItem } from "./services/items.ts";
 import { buildDemoRecognition, recognizeFood } from "./services/vision.ts";
@@ -104,6 +108,10 @@ const createMealSchema = z.object({
   items: z.array(itemInputSchema).min(1).max(20)
 });
 
+const templateCreateSchema = z.object({
+  mealId: z.string().regex(/^[0-9a-f-]{36}$/i, "记录标识不合法")
+});
+
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(20).optional(),
   goal: z.enum(GOALS as [Goal, ...Goal[]]).optional(),
@@ -164,6 +172,62 @@ function parseDate(value: unknown): string {
 
 function sumMealTotals(meals: Array<{ totals: NutritionFacts }>): NutritionFacts {
   return sumNutrition(meals.map((meal) => ({ nutrition: meal.totals })));
+}
+
+function parseOptionalDate(value: unknown): string {
+  if (value === undefined || value === null || value === "") return localDateKey();
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  throw new AppError(400, "日期格式应为 YYYY-MM-DD", "INVALID_DATE");
+}
+
+function toMealItemInput(item: FoodItem): MealItemInput {
+  return {
+    foodId: item.foodId,
+    name: item.name,
+    emoji: item.emoji,
+    category: item.category,
+    grams: item.grams,
+    confidence: item.confidence,
+    portionHint: item.portionHint,
+    per100g: item.per100g
+  };
+}
+
+/** 复制 / 常用餐都走这里：服务端重新计算营养，不信任存下来的总量。 */
+function insertMealFromItems(
+  store: Store,
+  deviceId: string,
+  meta: {
+    name: string;
+    mealType: MealType;
+    date: string;
+    imageUrl: string | null;
+    engine: string;
+  },
+  rawItems: MealItemInput[]
+): Meal {
+  const items = rawItems.map((item) =>
+    makeFoodItem({
+      name: item.name,
+      grams: item.grams,
+      confidence: item.confidence,
+      category: item.category,
+      per100g: item.per100g,
+      portionHint: item.portionHint,
+      foodId: item.foodId ?? null
+    })
+  );
+  const totals = itemsTotal(items);
+  return store.insertMeal(
+    deviceId,
+    {
+      ...meta,
+      eatenAt: new Date().toISOString(),
+      items
+    },
+    items,
+    totals
+  );
 }
 
 function subtractTargets(targets: Targets, totals: NutritionFacts): NutritionFacts {
@@ -392,7 +456,34 @@ export function createApp({ config, store }: CreateAppOptions) {
   app.get(
     "/api/foods",
     asyncRoute(async (req, res) => {
-      getDeviceId(req, config);
+      const deviceId = getDeviceId(req, config);
+      if (req.query.recent === "1") {
+        const recent = store.listRecentFoods(deviceId, 20).map((entry) => {
+          const food = entry.foodId ? FOOD_BY_ID.get(entry.foodId) : null;
+          if (food) {
+            return {
+              id: food.id,
+              // 保留用户上次看到的菜名（可能是“香煎豆腐”），营养值仍用食物库。
+              name: entry.name || food.name,
+              emoji: food.emoji,
+              category: food.category,
+              per100g: food.per100g,
+              portions: food.portions
+            };
+          }
+          return {
+            id: entry.foodId ?? `recent-${entry.name}`,
+            name: entry.name,
+            emoji: entry.emoji,
+            category: entry.category,
+            per100g: entry.per100g,
+            portions: []
+          };
+        });
+        res.json({ foods: recent });
+        return;
+      }
+
       const query = typeof req.query.q === "string" ? req.query.q.slice(0, 30) : "";
       const foods = searchFoods(query).map((food) => ({
         id: food.id,
@@ -403,6 +494,100 @@ export function createApp({ config, store }: CreateAppOptions) {
         portions: food.portions
       }));
       res.json({ foods });
+    })
+  );
+
+  app.get(
+    "/api/repeat",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      store.ensureProfile(deviceId);
+      const yesterdayKey = shiftDateKey(localDateKey(), -1);
+      const yesterday = store
+        .listMeals(deviceId, yesterdayKey)
+        .slice(-4)
+        .map((meal) => ({
+          id: meal.id,
+          name: meal.name,
+          mealType: meal.mealType,
+          imageUrl: meal.imageUrl,
+          emoji: (meal.items[0] && meal.items[0].emoji) || "🍽️",
+          itemCount: meal.items.length,
+          totals: meal.totals
+        }));
+
+      res.json({
+        templates: store.listTemplates(deviceId, 12),
+        yesterday
+      });
+    })
+  );
+
+  app.post(
+    "/api/templates",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const parsed = templateCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new AppError(400, "常用餐参数不完整", "INVALID_TEMPLATE", parsed.error.issues);
+      }
+      const meal = store.getMeal(deviceId, parsed.data.mealId);
+      if (!meal) throw new AppError(404, "没有找到这条饮食记录", "MEAL_NOT_FOUND");
+
+      const result = store.upsertTemplate(deviceId, {
+        name: meal.name,
+        mealType: meal.mealType,
+        imageUrl: meal.imageUrl,
+        items: meal.items.map(toMealItemInput),
+        totals: meal.totals
+      });
+      res.status(result.created ? 201 : 200).json({
+        template: result.template,
+        updated: !result.created
+      });
+    })
+  );
+
+  app.post(
+    "/api/templates/:id/log",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const id = String(req.params.id ?? "");
+      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+        throw new AppError(400, "常用餐标识不合法", "INVALID_ID");
+      }
+      const template = store.getTemplate(deviceId, id);
+      if (!template) throw new AppError(404, "没有找到这个常用餐", "TEMPLATE_NOT_FOUND");
+
+      const meal = insertMealFromItems(
+        store,
+        deviceId,
+        {
+          name: template.name,
+          mealType: template.mealType,
+          date: parseOptionalDate(req.body?.date),
+          imageUrl: null,
+          engine: "常用餐"
+        },
+        template.items
+      );
+      store.touchTemplate(deviceId, id);
+      res.status(201).json({ meal });
+    })
+  );
+
+  app.delete(
+    "/api/templates/:id",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const id = String(req.params.id ?? "");
+      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+        throw new AppError(400, "常用餐标识不合法", "INVALID_ID");
+      }
+      if (!store.deleteTemplate(deviceId, id)) {
+        throw new AppError(404, "没有找到这个常用餐", "TEMPLATE_NOT_FOUND");
+      }
+      res.status(204).end();
     })
   );
 
@@ -470,6 +655,33 @@ export function createApp({ config, store }: CreateAppOptions) {
         },
         items,
         totals
+      );
+      res.status(201).json({ meal });
+    })
+  );
+
+  app.post(
+    "/api/meals/:id/copy",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const id = String(req.params.id ?? "");
+      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+        throw new AppError(400, "记录标识不合法", "INVALID_ID");
+      }
+      const source = store.getMeal(deviceId, id);
+      if (!source) throw new AppError(404, "没有找到这条饮食记录", "MEAL_NOT_FOUND");
+
+      const meal = insertMealFromItems(
+        store,
+        deviceId,
+        {
+          name: source.name,
+          mealType: source.mealType,
+          date: parseOptionalDate(req.body?.date),
+          imageUrl: source.imageUrl,
+          engine: source.engine
+        },
+        source.items.map(toMealItemInput)
       );
       res.status(201).json({ meal });
     })

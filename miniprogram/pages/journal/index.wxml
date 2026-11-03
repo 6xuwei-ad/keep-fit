@@ -69,25 +69,31 @@
 
   <view class="meal-list">
     <view wx:for="{{meals}}" wx:key="id" class="card meal-card">
-      <view class="meal-visual">
-        <image wx:if="{{item.image}}" class="meal-image" src="{{item.image}}" mode="aspectFill"></image>
-        <view wx:else class="meal-emoji">{{item.emoji}}</view>
-        <text class="meal-type">{{item.typeLabel}}</text>
-      </view>
-      <view class="meal-copy">
-        <text class="meal-time">{{item.time}} · {{item.itemCount}} 种食材</text>
-        <text class="meal-name">{{item.name}}</text>
-        <text class="meal-items">{{item.itemsText}}</text>
-        <view class="meal-macros">
-          <text>{{item.protein}}g 蛋白</text>
-          <text>{{item.carbs}}g 碳水</text>
-          <text>{{item.fat}}g 脂肪</text>
+      <view class="meal-main">
+        <view class="meal-visual">
+          <image wx:if="{{item.image}}" class="meal-image" src="{{item.image}}" mode="aspectFill"></image>
+          <view wx:else class="meal-emoji">{{item.emoji}}</view>
+          <text class="meal-type">{{item.typeLabel}}</text>
+        </view>
+        <view class="meal-copy">
+          <text class="meal-time">{{item.time}} · {{item.itemCount}} 种食材</text>
+          <text class="meal-name">{{item.name}}</text>
+          <text class="meal-items">{{item.itemsText}}</text>
+          <view class="meal-macros">
+            <text>{{item.protein}}g 蛋白</text>
+            <text>{{item.carbs}}g 碳水</text>
+            <text>{{item.fat}}g 脂肪</text>
+          </view>
+        </view>
+        <view class="meal-side">
+          <text class="meal-kcal">{{item.kcal}}</text>
+          <text class="meal-kcal-unit">kcal</text>
         </view>
       </view>
-      <view class="meal-side">
-        <text class="meal-kcal">{{item.kcal}}</text>
-        <text class="meal-kcal-unit">kcal</text>
-        <button class="delete-btn" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onDelete">删除</button>
+      <view class="meal-actions">
+        <button class="meal-action" data-id="{{item.id}}" bindtap="onCopyMeal">再来一份</button>
+        <button class="meal-action" data-id="{{item.id}}" bindtap="onSaveTemplate">存为常用餐</button>
+        <button class="meal-action danger" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onDelete">删除</button>
       </view>
     </view>
   </view>

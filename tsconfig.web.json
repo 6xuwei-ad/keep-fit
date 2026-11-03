@@ -1,6 +1,9 @@
 {
-  // Web / 后端专用。微信开发者工具内置 TypeScript 4.1，
-  // 不认识 ES2022 与 Bundler，会在编辑器里画波浪线；小程序构建不读取此文件。
+  // Web / 后端专用。刻意不叫 tsconfig.json：
+  // 微信开发者工具会读取项目根目录的 tsconfig.json，并用内置 TypeScript 4.1
+  // 检查它，导致 ES2022 / Bundler / .ts 扩展导入等选项在 Problems 面板报错。
+  // 小程序本身不使用 TypeScript，因此把 Web 配置改名，DevTools 就不会再读它。
+  // 运行 npm run typecheck / build 时会显式使用本文件。
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -12,7 +15,6 @@
     "noImplicitOverride": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,

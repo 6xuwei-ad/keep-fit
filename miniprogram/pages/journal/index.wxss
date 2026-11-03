@@ -213,10 +213,14 @@
 }
 
 .meal-card {
-  display: flex;
-  align-items: center;
+  display: block;
   margin-bottom: 12rpx;
   padding: 12rpx;
+}
+
+.meal-main {
+  display: flex;
+  align-items: center;
 }
 
 .meal-visual {
@@ -318,10 +322,26 @@
   font-size: 14rpx;
 }
 
-.delete-btn {
-  margin-top: 16rpx;
-  color: #a26c5f;
+.meal-actions {
+  display: flex;
+  align-items: center;
+  margin: 4rpx 4rpx 0;
+  padding-top: 10rpx;
+  border-top: 1rpx dashed rgba(21, 39, 31, 0.1);
+}
+
+.meal-action {
+  margin-right: 26rpx;
+  color: #31473b;
   font-size: 17rpx;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.meal-action.danger {
+  margin-right: 0;
+  margin-left: auto;
+  color: #a26c5f;
 }
 
 .record-more {

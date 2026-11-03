@@ -32,7 +32,8 @@ Page({
     mealTypeOptions: mealTypeOptions("lunch"),
     mealPercent: 0,
     avgConfidence: 0,
-    saving: false
+    saving: false,
+    saveAsTemplate: false
   },
 
   onLoad() {
@@ -229,6 +230,10 @@ Page({
     wx.navigateBack();
   },
 
+  onToggleTemplate() {
+    this.setData({ saveAsTemplate: !this.data.saveAsTemplate });
+  },
+
   onSave() {
     if (this.data.saving) return;
     if (this.data.items.length === 0) {
@@ -262,13 +267,22 @@ Page({
     api
       .saveMeal(payload)
       .then((result) => {
-        wx.hideLoading();
-        this.setData({ saving: false });
-        app.globalData.lastSaved = result.meal;
-        wx.showToast({ title: "已加入今日饮食", icon: "success" });
-        setTimeout(() => {
-          wx.switchTab({ url: "/pages/journal/index" });
-        }, 650);
+        const finish = () => {
+          wx.hideLoading();
+          this.setData({ saving: false });
+          app.globalData.lastSaved = result.meal;
+          wx.showToast({ title: "已加入今日饮食", icon: "success" });
+          setTimeout(() => {
+            wx.switchTab({ url: "/pages/journal/index" });
+          }, 650);
+        };
+
+        if (!this.data.saveAsTemplate) {
+          finish();
+          return;
+        }
+        // 常用餐是附加动作，保存失败不阻塞这一餐入库。
+        api.saveTemplate(result.meal.id).then(finish).catch(finish);
       })
       .catch((error) => {
         wx.hideLoading();

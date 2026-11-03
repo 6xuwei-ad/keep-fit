@@ -164,6 +164,45 @@ Page({
     });
   },
 
+  onCopyMeal(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id || this._quickBusy) return;
+    this._quickBusy = true;
+    wx.showLoading({ title: "正在记录…", mask: true });
+    api
+      .copyMeal(id, this.data.date)
+      .then(() => {
+        wx.hideLoading();
+        this._quickBusy = false;
+        wx.showToast({ title: "已再来一份", icon: "success" });
+        this.loadDay(this.data.date);
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        this._quickBusy = false;
+        wx.showToast({ title: error.message || "复制失败", icon: "none" });
+      });
+  },
+
+  onSaveTemplate(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    wx.showLoading({ title: "正在保存…", mask: true });
+    api
+      .saveTemplate(id)
+      .then((result) => {
+        wx.hideLoading();
+        wx.showToast({
+          title: result.updated ? "已更新常用餐" : "已存为常用餐",
+          icon: "none"
+        });
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        wx.showToast({ title: error.message || "保存失败", icon: "none" });
+      });
+  },
+
   onShareAppMessage() {
     return {
       title: "食刻 · 拍一张，吃明白",

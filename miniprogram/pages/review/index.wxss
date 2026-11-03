@@ -535,3 +535,55 @@
 .save-button {
   width: 270rpx;
 }
+
+.template-toggle {
+  display: flex;
+  align-items: center;
+  margin-top: 18rpx;
+  padding: 14rpx 16rpx;
+  border: 1rpx solid rgba(21, 39, 31, 0.1);
+  border-radius: 18rpx;
+  background: rgba(248, 245, 234, 0.6);
+}
+
+.template-toggle.on {
+  border-color: rgba(27, 75, 55, 0.28);
+  background: #eef7c8;
+}
+
+.toggle-box {
+  display: flex;
+  width: 36rpx;
+  height: 36rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  color: #fbfdf0;
+  border: 1rpx solid rgba(27, 75, 55, 0.3);
+  border-radius: 10rpx;
+  background: #fffdf7;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.template-toggle.on .toggle-box {
+  border-color: #1b4b37;
+  background: #1b4b37;
+}
+
+.toggle-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.toggle-title {
+  font-size: 21rpx;
+  font-weight: 700;
+}
+
+.toggle-sub {
+  margin-top: 2rpx;
+  color: #70786f;
+  font-size: 16rpx;
+}

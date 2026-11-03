@@ -119,3 +119,69 @@
   line-height: 1.6;
   text-align: center;
 }
+
+.recent-block {
+  margin: 4rpx 0 14rpx;
+}
+
+.recent-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 4rpx 10rpx;
+}
+
+.recent-title {
+  font-size: 21rpx;
+  font-weight: 700;
+}
+
+.recent-hint {
+  color: #969c93;
+  font-size: 16rpx;
+}
+
+.recent-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.recent-chip {
+  display: inline-flex;
+  width: 176rpx;
+  flex-direction: column;
+  margin-right: 10rpx;
+  padding: 14rpx 14rpx 12rpx;
+  border: 1rpx solid rgba(21, 39, 31, 0.08);
+  border-radius: 20rpx;
+  background: #fffdf7;
+  vertical-align: top;
+  white-space: normal;
+}
+
+.recent-emoji {
+  font-size: 30rpx;
+  line-height: 1.2;
+}
+
+.recent-name {
+  overflow: hidden;
+  margin-top: 6rpx;
+  font-size: 19rpx;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-kcal {
+  margin-top: 2rpx;
+  color: #969c93;
+  font-size: 15rpx;
+}
+
+.recent-add {
+  margin-top: 8rpx;
+  color: #1b4b37;
+  font-size: 18rpx;
+  font-weight: 700;
+}

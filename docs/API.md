@@ -228,6 +228,10 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 最多 24 条。匹配规则：完全命中 > 前缀 > 包含；别名也参与匹配。
 
+### `GET /api/foods?recent=1`
+
+返回最近吃过的食物，按最近一次用餐时间去重，最多 20 种，供食物搜索的快捷入口使用。结构与 `GET /api/foods` 相同；如果某条记录不在内置食物库中，`portions` 为空数组。
+
 ---
 
 ## 识别
@@ -466,11 +470,104 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 ---
 
+## 常用餐与快速记录
+
+### `GET /api/repeat`
+
+首页「一键再吃」的数据源。无需请求体。
+
+```json
+{
+  "templates": [
+    {
+      "id": "uuid",
+      "name": "香煎豆腐彩虹能量碗",
+      "mealType": "lunch",
+      "imageUrl": "/uploads/1761900000000-a1b2c3d4.jpg",
+      "items": [
+        {
+          "foodId": "silken-tofu",
+          "name": "香煎豆腐",
+          "grams": 120,
+          "per100g": { "kcal": 76, "protein": 8.1, "carbs": 1.9, "fat": 4.8, "fiber": 0.3 }
+        }
+      ],
+      "itemCount": 8,
+      "totals": { "kcal": 551, "protein": 37, "carbs": 36, "fat": 32, "fiber": 12 },
+      "useCount": 3,
+      "createdAt": "2026-11-01T04:00:00.000Z",
+      "lastUsedAt": "2026-11-03T04:10:00.000Z"
+    }
+  ],
+  "yesterday": [
+    {
+      "id": "uuid",
+      "name": "香煎豆腐彩虹能量碗",
+      "mealType": "lunch",
+      "imageUrl": "/uploads/1761900000000-a1b2c3d4.jpg",
+      "emoji": "⬜",
+      "itemCount": 8,
+      "totals": { "kcal": 551, "protein": 37, "carbs": 36, "fat": 32, "fiber": 12 }
+    }
+  ]
+}
+```
+
+- `templates` 按最近使用排序，最多 12 个。
+- `yesterday` 是上海时区昨天的最后 4 餐，最多 4 条；没有则为空数组。
+
+### `POST /api/templates`
+
+把某一餐存为常用餐。
+
+```json
+{ "mealId": "6b0d1a90-..." }
+```
+
+- 只能使用当前身份自己的餐次。
+- 同名 + 同餐次重复保存会更新已有模板，不会新增重复项。
+- `201` 新建，`200` 更新；响应 `{ "template": {...}, "updated": false }`。
+- 每个身份最多保留 50 个模板，超出时淘汰使用次数最少、最久未打开的。
+
+错误：`400 INVALID_TEMPLATE`、`404 MEAL_NOT_FOUND`。
+
+### `POST /api/templates/:id/log`
+
+把常用餐记录到某一天，服务端会按食物库重新计算营养。
+
+```json
+{ "date": "2026-11-03" }
+```
+
+- `date` 可省略，默认上海时区今天。
+- 生成的新餐 `imageUrl` 为 `null`，避免复用旧照片。
+- 成功 `201 { "meal": {...} }`。
+- 错误：`400 INVALID_ID`、`404 TEMPLATE_NOT_FOUND`。
+
+### `DELETE /api/templates/:id`
+
+删除常用餐，成功 `204`；不存在返回 `404 TEMPLATE_NOT_FOUND`。
+
+### `POST /api/meals/:id/copy`
+
+复制某一餐到指定日期（日记「再来一份」、首页「复制昨天」共用）。
+
+```json
+{ "date": "2026-11-03" }
+```
+
+- `date` 可省略，默认今天。
+- 保留原餐名称、餐次和照片；营养由服务端重新计算。
+- 成功 `201 { "meal": {...} }`。
+- 错误：`400 INVALID_ID`、`404 MEAL_NOT_FOUND`。
+
+---
+
 ## 状态码汇总
 
 | 状态 | 含义 |
 | --- | --- |
-| 200 | 查询/更新成功 |
+| 200 | 查询/更新成功（含更新常用餐） |
 | 201 | 创建成功（分析、餐食） |
 | 204 | 删除成功 |
 | 400 | 参数/格式错误、缺少设备 |

@@ -113,6 +113,64 @@
     </view>
   </view>
 
+  <view wx:if="{{quickVisible}}" class="card quick-card fade-up">
+    <view class="quick-head">
+      <view>
+        <text class="eyebrow">QUICK ADD</text>
+        <view class="section-title">一键再吃</view>
+      </view>
+      <text class="quick-note">常吃的，不用重新拍</text>
+    </view>
+
+    <view wx:if="{{yesterdayMeals.length > 0}}" class="quick-block">
+      <text class="quick-label">昨天吃过</text>
+      <view class="quick-list">
+        <view
+          wx:for="{{yesterdayMeals}}"
+          wx:key="id"
+          class="quick-row"
+          data-id="{{item.id}}"
+          bindtap="onCopyMeal"
+        >
+          <view class="quick-emoji">{{item.emoji}}</view>
+          <view class="quick-copy">
+            <text class="quick-title">复制{{item.typeLabel}} · {{item.name}}</text>
+            <text class="quick-meta">{{item.itemCount}} 种食材 · {{item.kcal}} kcal</text>
+          </view>
+          <view class="quick-plus">＋</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{templates.length > 0}}" class="quick-block">
+      <text class="quick-label">常用餐</text>
+      <scroll-view scroll-x class="template-scroll" show-scrollbar="{{false}}">
+        <view
+          wx:for="{{templates}}"
+          wx:key="id"
+          class="template-card"
+          data-id="{{item.id}}"
+          bindtap="onLogTemplate"
+        >
+          <view
+            class="template-remove"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            catchtap="onDeleteTemplate"
+          >×</view>
+          <view class="template-emoji">{{item.emoji}}</view>
+          <text class="template-name">{{item.name}}</text>
+          <text class="template-meta">{{item.typeLabel}} · {{item.kcal}} kcal</text>
+          <view class="template-add">＋ 记录</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view wx:if="{{templates.length == 0}}" class="quick-hint">
+      在日记里点「存为常用餐」，下次就能从这里一键记录。
+    </view>
+  </view>
+
   <view class="advice-panel fade-up">
     <view class="advice-head">
       <view>
