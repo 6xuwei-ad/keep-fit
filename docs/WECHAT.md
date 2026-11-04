@@ -1,7 +1,7 @@
 # 微信小程序运行、登录与发布
 
 > 状态：**原生微信小程序客户端已实现**，位于 `miniprogram/`。  
-> 直接调仓库根目录的 Express API，与 Web 端共用食物库、营养引擎和 SQLite。
+> 直接调仓库根目录的 Express API，共用食物库、营养引擎和 SQLite。v2.0 起不再维护 Web 端。
 
 ---
 
@@ -21,10 +21,12 @@
 | 无 AppID 开发 | 自动回落 `x-device-id` 设备模式，全流程可用 |
 | 示例餐盘 | `POST /api/analyze/demo`，不需要客户端上传包内图片 |
 | 保存/删除 | 服务端重算、按身份隔离、级联删除 items |
+| 常用餐 | 存为常用餐、首页一键记录、复制昨天 |
+| 份量 | 100/75/50/25% 剩饭折算、可点击的份量参照 |
 | 下拉刷新 | 首页、日记、目标 |
 | 分享 | 分享卡片回到首页 |
 
-**验收状态：** 组件/页面脚本加载、WXML 结构、WXSS 语法、营养与建议一致性均通过自动检查；当前构建机器未安装微信开发者工具，因此还需要你在 DevTools 中做一次真实编译与真机预览。常用错误见第 8 节。
+**验收状态：** 组件/页面脚本加载、WXML 结构、WXSS 语法、营养与建议一致性均通过自动检查；还需要在微信开发者工具中做一次真实编译与真机预览。常用错误见第 8 节。
 
 ---
 
@@ -45,8 +47,8 @@ API：`http://127.0.0.1:8787`。
 1. 打开微信开发者工具 → **导入项目**。
 2. 目录选**仓库根目录**（`D:\keep fit`），不是 `miniprogram/`。
 3. AppID：
-   - 没有 AppID：保持 `project.config.json` 的 `touristappid`，可以预览 UI 与设备模式。
-   - 有 AppID：换成你自己的。
+   - `project.config.json` 当前使用真实 AppID；没有权限时换成自己的 AppID。
+   - 只预览 UI 也可以使用 `touristappid`，但真机预览和发布必须用真实 AppID。
 4. 详情 → 本地设置 → 勾选 **不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书**。
 
 ### 2.3 走通流程
@@ -180,9 +182,9 @@ miniprogram/
 
 ---
 
-## 6. 与 Web 端的一致性
+## 6. 与 API / 共享逻辑的一致性
 
-- 同一个 `POST /api/analyze`、`POST /api/meals`、`GET /api/day`；
+- 使用 `POST /api/analyze`、`POST /api/meals`、`GET /api/day`；
 - 同一个食物库（80+ 食材/菜肴）；
 - 同一套服务端保存时重算逻辑；
 - `miniprogram/utils/nutrition.js` 与 `shared/nutrition.ts` 公式一致；
@@ -221,7 +223,7 @@ miniprogram/
 
 ### 图片不显示
 
-- `/uploads/...` 在 Web 端是相对路径；小程序通过 `api.assetUrl()` 补上 `API_BASE`；
+- `/uploads/...` 是相对路径，小程序通过 `api.assetUrl()` 补上 `API_BASE`；
 - 正式环境使用 HTTPS，图片域名要加入 downloadFile；
 - 检查 `API_BASE` 是否带协议与端口。
 

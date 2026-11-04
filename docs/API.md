@@ -1,7 +1,7 @@
 # 食刻 API 契约
 
 > Base URL（开发）：`http://127.0.0.1:8787`  
-> 生产：与前端同源，例如 `https://shike.example.com`  
+> 生产：小程序调用的 HTTPS API 域名，例如 `https://shike.example.com`
 > 所有响应均为 `application/json`，`204` 无响应体。
 
 ---
@@ -64,7 +64,7 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 ### `GET /api/meta`
 
-无需身份。前端据此显示“演示模式”提示。
+无需身份。小程序据此显示“演示模式”提示。
 
 ```json
 {
@@ -321,11 +321,11 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 字段说明：
 
-- `provider`：`vision` | `demo`；`demo` 时前端必须展示 `notice`。
+- `provider`：`vision` | `demo`；`demo` 时小程序必须展示 `notice`。
 - `confidence`：0–1。
 - `source`：`database`（命中本地营养库）或 `ai`（模型估值）。
 - `items[].name` 保留模型识别到的具体做法，`per100g` 可能来自库。
-- `advice` 固定 3 条，但某些异常情况下可能少于 3（前端不应假设长度）。
+- `advice` 固定 3 条，但某些异常情况下可能少于 3（客户端不应假设长度）。
 - `suggestedMealType`：根据服务端当前时间推断，用户可在保存前修改。
 
 错误：
@@ -583,26 +583,7 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 ---
 
-## 前端调用示例
-
-```ts
-const headers = {
-  "x-device-id": localStorage.getItem("shike.device.v1")!,
-  "Content-Type": "application/json"
-};
-
-const day = await fetch(`/api/day?date=${date}`, { headers }).then((r) => r.json());
-
-const form = new FormData();
-form.append("image", compressedFile);
-const result = await fetch("/api/analyze", {
-  method: "POST",
-  headers: { "x-device-id": deviceId },
-  body: form
-}).then((r) => r.json());
-```
-
-`src/lib/api.ts` 对上述调用、错误解析和设备 ID 做了统一封装。
+## 客户端调用示例
 
 ### 微信小程序
 

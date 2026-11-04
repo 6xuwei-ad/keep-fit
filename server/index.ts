@@ -22,9 +22,6 @@ const server = app.listen(config.port, "0.0.0.0", () => {
   if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
     console.warn("  [warn] 生产环境缺少 SESSION_SECRET，当前使用开发默认值，请立即配置。");
   }
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`  前端     ${config.appOrigin}`);
-  }
   console.log("");
 });
 

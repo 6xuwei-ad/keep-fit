@@ -1,0 +1,22 @@
+{
+  // 仅用于 API 与 shared/ 的类型检查；小程序是原生 JS，不经过 TypeScript。
+  // 刻意不叫 tsconfig.json，避免微信开发者工具用内置 TypeScript 4.1 读取它。
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["server", "shared"],
+  "exclude": ["node_modules", "data", "miniprogram"]
+}

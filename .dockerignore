@@ -1,13 +1,12 @@
 node_modules
-dist
 data
 docs
+miniprogram
+scripts
 .git
 .gitignore
 .env
 .env.*
 !.env.example
 .npm-cache
-.edge-profile*
-shot-*.png
 *.log

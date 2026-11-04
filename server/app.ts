@@ -1,6 +1,4 @@
 import express, { type NextFunction, type Request, type Response } from "express";
-import fs from "node:fs";
-import path from "node:path";
 import multer from "multer";
 import { z } from "zod";
 import type { AppConfig } from "./config.ts";
@@ -788,26 +786,11 @@ export function createApp({ config, store }: CreateAppOptions) {
     res.status(404).json({ error: "图片不存在", code: "IMAGE_NOT_FOUND" });
   });
 
-  // 开发态 API 也需要提供示例图/图标，供微信小程序直接访问。
+  // 示例餐盘图片，供小程序演示识别直接访问。
   app.use(express.static(config.publicDir, { maxAge: "1d" }));
   app.use("/images", (_req, res) => {
     res.status(404).end();
   });
-
-  if (fs.existsSync(config.distDir)) {
-    app.use(express.static(config.distDir, { index: false, maxAge: "1h" }));
-    app.use((req, res, next) => {
-      if (req.method !== "GET" && req.method !== "HEAD") {
-        next();
-        return;
-      }
-      if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/")) {
-        next();
-        return;
-      }
-      res.sendFile(path.join(config.distDir, "index.html"));
-    });
-  }
 
   app.use("/api", (_req, res) => {
     res.status(404).json({ error: "接口不存在", code: "NOT_FOUND" });

@@ -27,7 +27,6 @@ test("识别、保存、汇总、删除的完整 API 流程", async (t) => {
     dataDir: dir,
     uploadDir: path.join(dir, "uploads"),
     publicDir: path.join(process.cwd(), "public"),
-    distDir: path.join(dir, "dist-not-built"),
     visionEnabled: false,
     allowDemo: true
   });
@@ -359,8 +358,7 @@ test("缺少设备标识时拒绝访问个人数据", async (t) => {
   const config = loadConfig({
     dataDir: dir,
     uploadDir: path.join(dir, "uploads"),
-    publicDir: path.join(process.cwd(), "public"),
-    distDir: path.join(dir, "dist-not-built")
+    publicDir: path.join(process.cwd(), "public")
   });
   const store = new Store(path.join(dir, "test.db"));
   const app = createApp({ config, store });

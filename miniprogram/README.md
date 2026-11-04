@@ -8,7 +8,7 @@
 
    ```bash
    npm run dev:server
-   # 或生产：npm run build && npm start
+   # 或生产：npm start
    ```
 
 2. 打开微信开发者工具 → **导入项目**。
@@ -17,11 +17,11 @@
    ```json
    {
      "miniprogramRoot": "miniprogram/",
-     "appid": "touristappid"
+     "appid": "wx8322ba2e4af6a427"
    }
    ```
 
-4. 没有 AppID 时使用测试号 `touristappid` 即可预览页面；要真机调试/发布，请换成自己的小程序 AppID。
+4. `project.config.json` 当前使用真实 AppID；没有权限时换成自己的 AppID，或临时使用 `touristappid` 预览页面。
 5. 详情 → 本地设置 → 勾选 **不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书**。
 
 打开首页后，点击「先看看示例餐盘」即可完整走通识别 → 改克数 → 保存 → 日记流程。
@@ -65,11 +65,11 @@ wx.login() → POST /api/auth/wechat → 服务端 code2Session → 签发会话
 
 | 页面 | 路径 | 能力 |
 | --- | --- | --- |
-| 今日 | `pages/home/index` | 今日概览、拍照/相册、示例餐盘、最近记录 |
-| 确认份量 | `pages/review/index` | 识别结果、克数实时重算、补食物、保存 |
-| 添加食物 | `pages/food-search/index` | 搜索 80+ 本地食物库 |
-| 日记 | `pages/journal/index` | 日期切换、餐食列表、删除、每日建议 |
-| 目标 | `pages/goals/index` | 昵称、减脂/维持/增肌、每日目标 |
+| 今日 | `pages/home/index` | 今日概览、拍照/相册、示例餐盘、一键再吃、最近记录 |
+| 确认份量 | `pages/review/index` | 识别结果、克数实时重算、剩饭比例、份量参照、补食物、保存 |
+| 添加食物 | `pages/food-search/index` | 搜索 80+ 本地食物库、最近吃过 |
+| 日记 | `pages/journal/index` | 日期切换、餐食列表、再来一份、存为常用餐、删除 |
+| 目标 | `pages/goals/index` | 昵称、减脂/维持/增肌、身体数据、自动目标 |
 
 ## 5. 结构
 
@@ -81,6 +81,8 @@ miniprogram/
 │  ├─ api.js                   # wx.request / wx.uploadFile / 会话
 │  ├─ nutrition.js             # 克数缩放与汇总（与 shared/nutrition.ts 对齐）
 │  ├─ advice.js                # 评分与建议（与 shared/advice.ts 对齐）
+│  ├─ body.js                  # BMR/TDEE（与 shared/body.ts 对齐）
+│  ├─ portion.js               # 剩饭比例、份量参照
 │  ├─ format.js
 │  └─ constants.js
 ├─ components/
@@ -96,11 +98,11 @@ miniprogram/
 └─ images/                     # tabBar 图标、示例餐盘、logo
 ```
 
-## 6. 与 Web 端的关系
+## 6. 与 API / 共享逻辑的关系
 
-- 两端共用同一个 API、同一套食物库、同一套营养规则。
-- Web 端用于桌面快速验收和大屏展示；微信端是主入口。
-- `miniprogram/utils/nutrition.js`、`advice.js` 是 `shared/` 的 JS 版本，修改规则时必须两边同步，`npm test` 会校验计算结果一致。
+- 小程序是唯一客户端，直接调用同一个 API、同一套食物库和营养规则。
+- `miniprogram/utils/nutrition.js`、`advice.js`、`body.js` 是 `shared/` 的 JS 版本，修改规则时必须两边同步，`npm test` 会校验计算结果一致。
+- `portion.js` 只在小程序端使用，不涉及服务端保存格式。
 
 ## 7. 上线前检查
 

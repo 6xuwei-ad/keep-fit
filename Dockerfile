@@ -1,15 +1,4 @@
-# ── Build ──────────────────────────────────────────────
-FROM node:24-bookworm-slim AS build
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-# ── Runtime ────────────────────────────────────────────
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-bookworm-slim
 WORKDIR /app
 
 ENV NODE_ENV=production \
@@ -18,10 +7,9 @@ ENV NODE_ENV=production \
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/server ./server
-COPY --from=build /app/shared ./shared
-COPY --from=build /app/public ./public
+COPY server ./server
+COPY shared ./shared
+COPY public ./public
 
 RUN mkdir -p /app/data && chown -R node:node /app
 USER node
