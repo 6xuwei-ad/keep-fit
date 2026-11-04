@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
 const bodyUtil = require("../../utils/body");
+const format = require("../../utils/format");
 const { GOAL_TARGETS } = require("../../utils/constants");
 
 const GOAL_OPTIONS = [
@@ -41,6 +42,19 @@ function bodyFromData(data) {
   };
 }
 
+function weightView(weights) {
+  const data = weights || {};
+  const latest = data.latest || null;
+  return {
+    weightLatest: latest ? Number(latest.weightKg).toFixed(1) : "",
+    weightSummary: latest
+      ? data.recordedThisWeek
+        ? "本周已记录 · " + format.friendlyDate(latest.date)
+        : "上次 " + format.friendlyDate(latest.date)
+      : "记录第一笔体重"
+  };
+}
+
 function goalOptions(selected, body) {
   const complete = body && bodyUtil.isComplete(body);
   return GOAL_OPTIONS.map((goal) => {
@@ -76,11 +90,35 @@ Page({
     bmr: 0,
     tdee: 0,
     targetsMode: "manual",
-    activityOptions: bodyUtil.ACTIVITY_OPTIONS
+    activityOptions: bodyUtil.ACTIVITY_OPTIONS,
+    weightLatest: "",
+    weightSummary: "记录第一笔体重"
   },
 
   onLoad() {
+    this._dirty = false;
     this.loadProfile();
+  },
+
+  onShow() {
+    // 有未保存修改时只同步体重，避免覆盖用户正在编辑的其他字段。
+    if (!this._loaded) return;
+    if (this._dirty) {
+      const profile = getApp().globalData.profile;
+      if (profile && profile.weightKg !== undefined) {
+        this.setData({ weightKg: profile.weightKg });
+      }
+      this.loadWeightEntry();
+      return;
+    }
+    this.loadProfile();
+  },
+
+  loadWeightEntry() {
+    return api
+      .getWeights()
+      .then((weights) => this.setData(weightView(weights)))
+      .catch(() => {});
   },
 
   onPullDownRefresh() {
@@ -91,10 +129,17 @@ Page({
     const app = getApp();
     return app
       .ready()
-      .then(() => Promise.all([api.getProfile(), api.getMeta()]))
+      .then(() =>
+        Promise.all([
+          api.getProfile(),
+          api.getMeta(),
+          api.getWeights().catch(() => null)
+        ])
+      )
       .then((results) => {
         const profile = results[0].profile;
         const meta = results[1];
+        const weights = results[2] || {};
         app.globalData.profile = profile;
         const targets = profile.targets || DEFAULT_TARGETS;
         const body = {
@@ -106,6 +151,7 @@ Page({
         };
         const complete = bodyUtil.isComplete(body);
         const metrics = complete ? bodyUtil.metrics(body) : null;
+        const weight = weightView(weights);
         this.setData({
           loading: false,
           name: profile.name || "食刻用户",
@@ -133,8 +179,12 @@ Page({
           bodyComplete: complete,
           bmr: profile.bmr || (metrics ? metrics.bmr : 0),
           tdee: profile.tdee || (metrics ? metrics.tdee : 0),
-          targetsMode: profile.targetsMode === "auto" ? "auto" : "manual"
+          targetsMode: profile.targetsMode === "auto" ? "auto" : "manual",
+          weightLatest: weight.weightLatest,
+          weightSummary: weight.weightSummary
         });
+        this._loaded = true;
+        this._dirty = false;
       })
       .catch((error) => {
         this.setData({ loading: false });
@@ -174,6 +224,7 @@ Page({
 
   onNameInput(event) {
     const name = event.detail.value;
+    this._dirty = true;
     this.setData({ name, avatar: name.slice(0, 1) || "食", error: "" });
   },
 
@@ -182,24 +233,32 @@ Page({
     const raw = event.detail.value;
     const value = raw === "" ? "" : Number(raw);
     if (raw !== "" && !Number.isFinite(value)) return;
+    this._dirty = true;
     this.setData({ [key]: value, error: "" }, () => this.refreshBody());
   },
 
   chooseSex(event) {
+    this._dirty = true;
     this.setData({ sex: event.currentTarget.dataset.value, error: "" }, () =>
       this.refreshBody()
     );
   },
 
   chooseActivity(event) {
+    this._dirty = true;
     this.setData(
       { activityLevel: event.currentTarget.dataset.id, error: "" },
       () => this.refreshBody()
     );
   },
 
+  goWeight() {
+    wx.navigateTo({ url: "/pages/weight/index" });
+  },
+
   chooseGoal(event) {
     const goal = event.currentTarget.dataset.id;
+    this._dirty = true;
     const body = bodyFromData(this.data);
     const complete = bodyUtil.isComplete(body);
     const targets = complete
@@ -220,6 +279,7 @@ Page({
     const raw = event.detail.value;
     const value = raw === "" ? 0 : Number(raw);
     if (!Number.isFinite(value)) return;
+    this._dirty = true;
     const targets = Object.assign({}, this.data.targets, { [key]: value });
     this.setData({
       targets,
@@ -235,6 +295,7 @@ Page({
       wx.showToast({ title: "请先填完身体数据", icon: "none" });
       return;
     }
+    this._dirty = true;
     const plan = bodyUtil.computeTargets(body, this.data.goal);
     this.setData({
       targets: plan.targets,
@@ -249,6 +310,7 @@ Page({
 
   resetTargets() {
     const body = bodyFromData(this.data);
+    this._dirty = true;
     if (bodyUtil.isComplete(body)) {
       const plan = bodyUtil.computeTargets(body, this.data.goal);
       this.setData({
@@ -338,6 +400,7 @@ Page({
       .then((result) => {
         wx.hideLoading();
         const profile = result.profile;
+        this._dirty = false;
         getApp().globalData.profile = profile;
         const complete = bodyUtil.isComplete({
           sex: profile.sex,

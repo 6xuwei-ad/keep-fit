@@ -46,6 +46,45 @@ export interface BodyMetrics {
   tdee: number;
 }
 
+/** 一次体重记录，同一天只保留一条。 */
+export interface WeightLog {
+  id: string;
+  date: string;
+  weightKg: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 一周（周一到周日）的平均体重。 */
+export interface WeightWeek {
+  weekStart: string;
+  weekEnd: string;
+  average: number;
+  min: number;
+  max: number;
+  count: number;
+}
+
+/** 最近一次体重相对更早一条记录的变化。 */
+export interface WeightChange {
+  delta: number;
+  fromWeight: number;
+  toWeight: number;
+  since: string;
+  days: number;
+}
+
+export interface WeightTrendResponse {
+  logs: WeightLog[];
+  weeks: WeightWeek[];
+  latest: WeightLog | null;
+  latestWeek: WeightWeek | null;
+  change: WeightChange | null;
+  currentWeekStart: string;
+  recordedThisWeek: boolean;
+  profile: Profile;
+}
+
 export interface Profile extends BodyProfile {
   deviceId: string;
   name: string;

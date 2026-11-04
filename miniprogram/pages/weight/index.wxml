@@ -1,0 +1,120 @@
+<view class="weight-page">
+  <view class="page-head">
+    <text class="eyebrow">WEIGHT TREND</text>
+    <view class="page-title">看趋势，<br />不评判。</view>
+    <view class="page-sub">体重每天都会波动。建议每周固定时间称一次，这里只记录变化，不评价胖瘦。</view>
+  </view>
+
+  <view class="weight-hero">
+    <view class="hero-top">
+      <text class="eyebrow eyebrow-light">LATEST</text>
+      <text class="hero-date">{{latestDateText}}</text>
+    </view>
+    <view wx:if="{{latestWeight != '--'}}" class="hero-number">
+      {{latestWeight}}<text class="hero-unit">kg</text>
+    </view>
+    <view wx:else class="hero-empty">还没有体重记录</view>
+    <view class="hero-row">
+      <view class="hero-chip {{changeTone}}">
+        <text wx:if="{{changeArrow}}" class="hero-arrow">{{changeArrow}}</text>
+        {{changeText}}
+      </view>
+      <view class="hero-week">
+        <text class="hero-week-label">最近一周平均</text>
+        <text class="hero-week-value">{{weekAverageText}}<text wx:if="{{weekAverageText != '—'}}"> kg</text></text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card chart-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">12 WEEKS</text>
+        <view class="section-title">每周平均</view>
+      </view>
+      <text class="chart-note">{{weeksCount > 0 ? weeksCount + ' 周记录' : '暂无趋势'}}</text>
+    </view>
+    <view wx:if="{{hasWeeks}}" class="chart-wrap">
+      <canvas type="2d" id="weightChart" class="weight-canvas"></canvas>
+    </view>
+    <view wx:else class="chart-empty">
+      <text class="chart-empty-title">第一笔记录，就是起点</text>
+      <text class="chart-empty-copy">记下今天的体重，下一周再记一次，就能看到折线。</text>
+    </view>
+    <view class="chart-foot">
+      <text>折线只描述记录，不代表目标。</text>
+      <text wx:if="{{weekRangeText}}">最近一周 {{weekRangeText}}</text>
+    </view>
+  </view>
+
+  <view class="card record-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">LOG WEIGHT</text>
+        <view class="section-title">记录一次</view>
+      </view>
+      <text class="week-badge {{recordedThisWeek ? 'done' : ''}}">{{recordedThisWeek ? '本周已记录' : '本周待记录'}}</text>
+    </view>
+
+    <view class="record-row">
+      <picker
+        class="record-picker"
+        mode="date"
+        value="{{dateInput}}"
+        end="{{today}}"
+        bindchange="onDateChange"
+      >
+        <view class="record-field">
+          <text class="record-label">日期</text>
+          <view class="record-value">{{dateInputText}} <text class="record-chev">›</text></view>
+        </view>
+      </picker>
+      <view class="record-field record-field--weight">
+        <text class="record-label">体重</text>
+        <view class="weight-input-wrap">
+          <input
+            class="weight-input"
+            type="digit"
+            value="{{weightInput}}"
+            placeholder="60.0"
+            bindinput="onWeightInput"
+          />
+          <text class="weight-input-unit">kg</text>
+        </view>
+      </view>
+    </view>
+
+    <button class="btn btn-primary btn-full record-btn" bindtap="onRecord" disabled="{{saving}}">
+      {{saving ? '记录中…' : '记录体重'}}
+    </button>
+    <view wx:if="{{saveNote}}" class="save-note">{{saveNote}}</view>
+    <view class="record-hint">同一天重复记录会覆盖当天的数值。</view>
+  </view>
+
+  <view wx:if="{{logs.length > 0}}" class="card history-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">HISTORY</text>
+        <view class="section-title">全部记录</view>
+      </view>
+      <text class="chart-note">{{logs.length}} 条</text>
+    </view>
+    <view class="history-list">
+      <view wx:for="{{logs}}" wx:key="id" class="history-row">
+        <view class="history-date">
+          <text>{{item.dateText}}</text>
+          <text wx:if="{{item.thisWeek}}" class="this-week">本周</text>
+        </view>
+        <text class="history-weight">{{item.weight}}<text> kg</text></text>
+        <view class="history-delete" data-id="{{item.id}}" catchtap="onDelete">×</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card info-card">
+    <view class="info-title">怎么记更有意义</view>
+    <view class="info-body">每周固定一天、起床后空腹称一次，比每天称更容易看出趋势。体重受水分、盐分和作息影响，单次上涨不代表脂肪增加。</view>
+    <view class="info-body">自动模式下，新体重会同步到目标页，并重算每日热量与蛋白质；手动模式只更新体重，不改目标数值。</view>
+    <button class="btn btn-soft btn-full info-btn" bindtap="goGoals">去目标页查看</button>
+  </view>
+</view>

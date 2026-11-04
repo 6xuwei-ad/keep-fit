@@ -174,7 +174,8 @@ miniprogram/
 │  ├─ review/
 │  ├─ food-search/
 │  ├─ journal/
-│  └─ goals/
+│  ├─ goals/
+│  └─ weight/
 └─ images/                   # tabBar 图标、logo、示例餐盘
 ```
 

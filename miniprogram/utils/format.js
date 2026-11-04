@@ -27,6 +27,11 @@ function formatDate(key, withWeekday) {
   return `${text} · ${WEEKDAYS[date.getDay()]}`;
 }
 
+function monthDay(key) {
+  const date = parseDateKey(key);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 function friendlyDate(key) {
   const today = dateKey();
   if (key === today) return "今天";
@@ -59,6 +64,7 @@ module.exports = {
   parseDateKey,
   shiftDateKey,
   formatDate,
+  monthDay,
   friendlyDate,
   clock,
   greeting,

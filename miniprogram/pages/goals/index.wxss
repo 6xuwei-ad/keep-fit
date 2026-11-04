@@ -46,6 +46,7 @@
 
 .profile-card,
 .body-card,
+.weight-entry-card,
 .goal-card,
 .targets-card,
 .info-card {
@@ -57,6 +58,69 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+}
+
+.weight-entry-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(217, 239, 124, 0.28), transparent 260rpx),
+    #fffdf7;
+}
+
+.weight-entry-arrow {
+  display: flex;
+  width: 48rpx;
+  height: 48rpx;
+  align-items: center;
+  justify-content: center;
+  color: #1b4b37;
+  border-radius: 50%;
+  background: #eef7c8;
+  font-size: 24rpx;
+}
+
+.weight-entry-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+
+.weight-entry-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.weight-entry-num {
+  color: #1b4b37;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 48rpx;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.weight-entry-num--empty {
+  color: #b7b9b0;
+}
+
+.weight-entry-unit {
+  color: #8d948d;
+  font-family: -apple-system, sans-serif;
+  font-size: 16rpx;
+}
+
+.weight-entry-sub {
+  margin-top: 4rpx;
+  color: #969c93;
+  font-size: 17rpx;
+}
+
+.weight-entry-link {
+  flex: none;
+  margin-left: 12rpx;
+  color: #31473b;
+  font-size: 18rpx;
+  font-weight: 600;
 }
 
 .avatar {

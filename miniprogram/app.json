@@ -3,6 +3,7 @@
     "pages/home/index",
     "pages/journal/index",
     "pages/goals/index",
+    "pages/weight/index",
     "pages/review/index",
     "pages/food-search/index"
   ],

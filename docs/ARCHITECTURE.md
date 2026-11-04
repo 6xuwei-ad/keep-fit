@@ -118,7 +118,8 @@ flowchart LR
 │  │  ├─ review/                 # 识别结果、克数、剩饭比例
 │  │  ├─ food-search/            # 食物库搜索与最近吃过
 │  │  ├─ journal/                # 日记录
-│  │  └─ goals/                  # 身体数据与目标
+│  │  ├─ goals/                  # 身体数据与目标
+│  │  └─ weight/                 # 体重趋势、周平均、目标同步
 │  ├─ utils/
 │  │  ├─ api.js                  # wx.request / uploadFile / 登录
 │  │  ├─ nutrition.js            # 与服务端共享公式
@@ -186,7 +187,8 @@ ready()              等待微信登录 / 设备 ID 初始化
 | `review` | 识别结果、克数编辑、剩饭比例、份量参照、保存 |
 | `food-search` | 搜索食物库、最近吃过、把食物加回 review |
 | `journal` | 按天查看、删除、再来一份、存为常用餐 |
-| `goals` | 昵称、目标、身体数据、自动/手动目标 |
+| `goals` | 昵称、目标、身体数据、自动/手动目标、体重入口 |
+| `weight` | 记录/修正体重、12 周折线、周平均、删除记录 |
 
 `review` 是唯一持有“未保存识别结果”的页面。保存成功后把 `meal` 放入 `globalData.lastSaved`，再 `switchTab` 到日记。
 
@@ -223,6 +225,13 @@ referencesFor(item)   从 portionHint 提取“半盒 · 150g”，再按品类�
 applyRatio(items, r)  用 baseGrams × r 折算整盘
 setGrams(item, g, r)  手动改克数时反推 baseGrams = g / r
 ```
+
+### 5.6 体重趋势
+
+- `pages/weight/index` 用 Canvas 2D 画最近 12 个自然周的平均体重，不引入图表库；
+- 折线点位按真实周间隔计算，缺记录的周不会被压到一起；
+- 页面只做展示与录入，周平均、28 天变化全部由服务端 `shared/weight.ts` 计算；
+- 首页和目标页各有一个轻量入口，首页入口加载失败时静默隐藏，不影响主流程。
 
 review 页面保存 `baseGrams`（100% 基准）与当前 `grams`，因此：
 
@@ -266,9 +275,9 @@ store.ts                   SQLite，唯一数据访问入口
 - `PRAGMA foreign_keys = ON`；
 - `insertMeal` 使用 `BEGIN IMMEDIATE / COMMIT / ROLLBACK` 保证 meal 与 items 原子性；
 - 所有 SQL 使用 prepared statement 参数绑定；
-- 索引：`meals(device_id, date, eaten_at)`、`meal_items(meal_id, order_index)`、`meal_templates(device_id, last_used_at)`。
+- 索引：`meals(device_id, date, eaten_at)`、`meal_items(meal_id, order_index)`、`meal_templates(device_id, last_used_at)`、`weight_logs(device_id, date)`。
 
-旧数据库通过 `addColumnIfMissing` 逐列迁移；`meal_templates` 用 `CREATE TABLE IF NOT EXISTS` 增量创建。
+旧数据库通过 `addColumnIfMissing` 逐列迁移；`meal_templates` 与 `weight_logs` 用 `CREATE TABLE IF NOT EXISTS` 增量创建。`weight_logs` 对 `(device_id, date)` 建唯一约束，保证一天只有一条。
 
 ### 6.3 静态资源
 
@@ -336,7 +345,35 @@ sequenceDiagram
 
 两条入口共用「复制 items → 服务端重算 → 新建 meal」逻辑；模板只存快照，复制时生成新的 meal id。
 
-### 7.3 失败与降级矩阵
+### 7.3 体重记录 → 目标同步
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 用户
+  participant W as 小程序
+  participant A as Express
+  participant D as SQLite
+  participant B as 身体计算
+
+  U->>W: 输入体重 / 日期
+  W->>A: POST /api/weights
+  A->>D: upsert weight_logs(device_id, date)
+  A->>D: 读取最新一条记录
+  A->>A: 档案 weight_kg = 最新记录
+  alt targetsMode = auto 且身体数据完整
+    A->>B: computeTargets(新体重, goal)
+    B-->>A: 新热量 / 蛋白质 / 碳水 / 脂肪 / 纤维
+  end
+  A->>D: updateProfile
+  A-->>W: log + profile + targetsUpdated
+```
+
+- 同一天重复提交走覆盖，不会产生重复点；
+- 回填旧日期时，档案仍然取“日期最新”的一条，而不是最后提交的一条；
+- 删除最新一条后，档案回退到剩余记录中最新的一条；删空时保留当前档案体重，不强行清空。
+
+### 7.4 失败与降级矩阵
 
 | 情况 | 行为 | 用户看到 |
 | --- | --- | --- |
@@ -437,7 +474,24 @@ inferMealType(date)
 
 目标页可自动计算，也可手动覆盖；手动输入后 `targetsMode = "manual"`。
 
-### 9.3 餐盘质量分
+### 9.3 体重趋势与目标同步
+
+`shared/weight.ts` 只做纯计算：
+
+- 自然周：周一 00:00 到周日 23:59（按日期键，不受时区偏移影响）；
+- 周平均：该周所有记录的算术平均，保留 1 位小数；
+- 28 天变化：最近一条记录对比“至少 28 天以前”的最近一条；不足 28 天返回 `null`；
+- 最多返回最近 12 周，避免早期数据把折线压扁。
+
+同步规则在 `Store.syncWeightToProfile`：
+
+- `profiles.weight_kg` 始终等于 `weight_logs` 中日期最新的一条；
+- 目标页 `PUT /api/profile` 修改 `weightKg` 时，会写入/更新今天的体重记录；
+- 自动目标模式且身体数据完整时，用新体重重新 `computeTargets`；
+- 手动模式只更新体重，不覆盖用户手填的目标；
+- 删除最新记录后回退到剩余记录中最新的一条；删空时保留当前档案体重。
+
+### 9.4 餐盘质量分
 
 `buildPlateQuality` 是可解释的相对分数：
 
@@ -454,7 +508,7 @@ inferMealType(date)
 
 标签：≥88 非常均衡 / ≥75 相当不错 / ≥60 还有提升空间 / 否则需要调整。
 
-### 9.4 建议规则
+### 9.5 建议规则
 
 `buildMealAdvice` 与 `buildDailyAdvice` 是确定性规则，不依赖模型：
 
@@ -550,6 +604,15 @@ erDiagram
     TEXT updated_at
     TEXT last_used_at
   }
+
+  WEIGHT_LOGS {
+    TEXT id PK
+    TEXT device_id FK
+    TEXT date
+    REAL weight_kg
+    TEXT created_at
+    TEXT updated_at
+  }
 ```
 
 设计说明：
@@ -557,6 +620,7 @@ erDiagram
 - `profiles.device_id` 当前是设备标识；生产环境应改为 `users.id`，并在服务端建立设备→用户映射。
 - `meals` 存汇总值，避免日记列表每次重新求和；`meal_items` 存明细与 `per100g_json` 快照。
 - `meal_templates` 存 `items_json` 快照和汇总值；一键记录时仍走 `makeFoodItem` 重新计算。
+- `weight_logs` 一天一条（`UNIQUE(device_id, date)`），是体重的唯一事实来源；`profiles.weight_kg` 只是最新记录的快照，用于 BMR/TDEE 和目标计算。
 - `date` 是查询键（YYYY-MM-DD），`eaten_at` 是完整时间；服务端默认使用上海时区。
 - `source` 区分 `database` / `ai`；`engine` 记录模型名或「演示引擎」。
 
@@ -572,6 +636,9 @@ GET    /api/meta
 POST   /api/auth/wechat      { code } → token（未配置返回 501）
 GET    /api/profile
 PUT    /api/profile
+GET    /api/weights
+POST   /api/weights
+DELETE /api/weights/:id
 GET    /api/foods?q=
 GET    /api/foods?recent=1
 POST   /api/analyze          multipart/form-data, field=image
@@ -633,7 +700,7 @@ x-device-id: 8d1f0c2e-...
 ## 14. 测试
 
 ```text
-npm test          18 个测试
+npm test          19 个测试
 npm run typecheck  server/shared 类型检查
 npm run check:mini 小程序 JSON / JS / WXSS / 页面文件 / tabBar 图标
 npm run check     以上三项
@@ -644,9 +711,10 @@ npm run check     以上三项
 - 营养缩放、汇总、宏量供能；
 - 餐盘评分与三条建议；
 - 身体数据 BMR/TDEE 与目标；
+- 体重按自然周聚合、28 天变化与 API 同步；
 - 视觉模型 JSON 解析；
 - 会话签名、篡改、过期；
-- 完整 API 流程：识别 → 保存 → 模板 → 复制 → 删除；
+- 完整 API 流程：识别 → 保存 → 模板 → 复制 → 删除 → 体重；
 - 小程序与服务端营养/身体计算 parity；
 - 小程序份量参照与剩饭比例；
 - 页面/组件脚本在微信运行时外壳下可加载。
@@ -711,7 +779,7 @@ docker run --rm -p 8787:8787 \
 
 ### 16.4 体验
 
-- 体重趋势、周报、连续记录；
+- 饮食周报、连续记录；
 - 订阅消息提醒；
 - 营养标签 OCR（比商品条码更适合中国零食/饮料）。
 

@@ -99,6 +99,23 @@
     <view wx:if="{{!bodyComplete}}" class="body-hint">填完性别、年龄、身高、体重和活动量后，才能自动计算。</view>
   </view>
 
+  <view class="card weight-entry-card" bindtap="goWeight">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">WEIGHT TREND</text>
+        <view class="section-title">体重趋势</view>
+      </view>
+      <text class="weight-entry-arrow">↗</text>
+    </view>
+    <view class="weight-entry-body">
+      <view class="weight-entry-main">
+        <text class="weight-entry-num {{weightLatest ? '' : 'weight-entry-num--empty'}}">{{weightLatest || '—'}}<text wx:if="{{weightLatest}}" class="weight-entry-unit"> kg</text></text>
+        <text class="weight-entry-sub">{{weightSummary}}</text>
+      </view>
+      <text class="weight-entry-link">记录 / 查看 ›</text>
+    </view>
+  </view>
+
   <view class="card goal-card">
     <view class="card-head">
       <view>

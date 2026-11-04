@@ -18,10 +18,12 @@ import type {
   Profile,
   Sex,
   Targets,
-  TargetsMode
+  TargetsMode,
+  WeightTrendResponse
 } from "../shared/types.ts";
 import { buildDailyAdvice } from "../shared/advice.ts";
 import { computeTargets, isBodyComplete } from "../shared/body.ts";
+import { aggregateWeightWeeks, weekStartKey, weightChange } from "../shared/weight.ts";
 import {
   GOAL_TARGETS,
   caloriePercent,
@@ -125,6 +127,38 @@ const profileSchema = z.object({
     .nullable()
     .optional()
 });
+
+const weightSchema = z.object({
+  weightKg: z.coerce.number().min(30).max(250),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "日期格式应为 YYYY-MM-DD")
+    .optional()
+});
+
+function isValidDateKey(value: string): boolean {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+/** 体重不能记在未来；不传日期时默认今天。 */
+function parseWeightDate(value: string | undefined): string {
+  const today = localDateKey();
+  const date = value ?? today;
+  if (!isValidDateKey(date)) {
+    throw new AppError(400, "日期不存在，请重新选择", "INVALID_WEIGHT_DATE");
+  }
+  if (date > today) {
+    throw new AppError(400, "体重日期不能晚于今天", "WEIGHT_FUTURE");
+  }
+  return date;
+}
 
 function asyncRoute(
   handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>
@@ -447,7 +481,93 @@ export function createApp({ config, store }: CreateAppOptions) {
         ...(targets ? { targets } : {}),
         ...(targetsMode ? { targetsMode } : {})
       });
+
+      // 目标页修改体重时顺手记下今天的体重，避免档案与趋势出现两个数字。
+      if (
+        parsed.data.weightKg !== undefined &&
+        parsed.data.weightKg !== null &&
+        (current.weightKg === null ||
+          Math.abs(current.weightKg - parsed.data.weightKg) >= 0.001)
+      ) {
+        store.upsertWeightLog(deviceId, {
+          date: localDateKey(),
+          weightKg: round(parsed.data.weightKg, 1)
+        });
+      }
+
       res.json({ profile });
+    })
+  );
+
+  app.get(
+    "/api/weights",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const profile = store.ensureProfile(deviceId);
+      const today = localDateKey();
+      const logs = store.listWeightLogs(deviceId, 365);
+      const weeks = aggregateWeightWeeks(logs, 12);
+      const latest = logs.length > 0 ? (logs[logs.length - 1] ?? null) : null;
+      const latestWeek = weeks.length > 0 ? (weeks[weeks.length - 1] ?? null) : null;
+      const currentWeekStart = weekStartKey(today);
+
+      const payload: WeightTrendResponse = {
+        logs,
+        weeks,
+        latest,
+        latestWeek,
+        change: weightChange(logs, 28),
+        currentWeekStart,
+        recordedThisWeek: logs.some(
+          (log) => log.date >= currentWeekStart && log.date <= today
+        ),
+        profile
+      };
+      res.json(payload);
+    })
+  );
+
+  app.post(
+    "/api/weights",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const parsed = weightSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new AppError(
+          400,
+          "体重需要在 30–250kg 之间",
+          "INVALID_WEIGHT",
+          parsed.error.issues
+        );
+      }
+      const date = parseWeightDate(parsed.data.date);
+      const result = store.upsertWeightLog(deviceId, {
+        date,
+        weightKg: round(parsed.data.weightKg, 1)
+      });
+      const synced = store.syncWeightToProfile(deviceId);
+      res.status(result.created ? 201 : 200).json({
+        log: result.log,
+        created: result.created,
+        profile: synced.profile,
+        targetsUpdated: synced.targetsUpdated
+      });
+    })
+  );
+
+  app.delete(
+    "/api/weights/:id",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const id = String(req.params.id ?? "");
+      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+        throw new AppError(400, "体重记录标识不合法", "INVALID_ID");
+      }
+      if (!store.deleteWeightLog(deviceId, id)) {
+        throw new AppError(404, "没有找到这条体重记录", "WEIGHT_NOT_FOUND");
+      }
+      const synced = store.syncWeightToProfile(deviceId);
+      res.json({ profile: synced.profile, targetsUpdated: synced.targetsUpdated });
     })
   );
 

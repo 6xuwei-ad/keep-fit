@@ -147,6 +147,18 @@ module.exports = {
   updateProfile(payload) {
     return request("/api/profile", { method: "PUT", data: payload });
   },
+  getWeights() {
+    return request("/api/weights");
+  },
+  saveWeight(weightKg, date) {
+    return request("/api/weights", {
+      method: "POST",
+      data: { weightKg, date }
+    });
+  },
+  deleteWeight(id) {
+    return request(`/api/weights/${id}`, { method: "DELETE" });
+  },
   searchFoods(query) {
     return request(`/api/foods?q=${encodeURIComponent(query || "")}`);
   },

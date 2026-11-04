@@ -189,10 +189,95 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 - `targets` 可选；传了即视为手动目标（`targetsMode: "manual"`）。
 - `recalculate: true` 时，按 BMR/TDEE 自动计算目标（`targetsMode: "auto"`），需要完整的身体数据。
 - 身体数据：`sex` 为 `female` / `male`，`age` 18–80，`heightCm` 120–230，`weightKg` 30–250，`activityLevel` 为 `sedentary` / `light` / `moderate` / `active` / `very-active`。
+- `weightKg` 发生变化时，服务端会同时写入/更新今天的体重记录，保证档案与体重趋势是同一个数字。
 - 不传 `targets`、不传 `recalculate` 时：若传了 `goal` 使用推荐目标，否则保留原值。
 - 范围：kcal 800–5000，protein 30–300，carbs 30–600，fat 15–200，fiber 10–80。
 
 成功：`200 { "profile": {...} }`。身体数据完整时，`profile.bmr` 与 `profile.tdee` 会返回估算值。
+
+---
+
+## 体重趋势
+
+### `GET /api/weights`
+
+返回最近 365 条原始记录（按日期升序）、最近 12 个自然周（周一到周日）的平均值，以及最近一次变化。
+
+```json
+{
+  "logs": [
+    {
+      "id": "b6f0e7d2-...",
+      "date": "2026-10-01",
+      "weightKg": 81.2,
+      "createdAt": "2026-10-01T00:20:00.000Z",
+      "updatedAt": "2026-10-01T00:20:00.000Z"
+    }
+  ],
+  "weeks": [
+    {
+      "weekStart": "2026-09-28",
+      "weekEnd": "2026-10-04",
+      "average": 80.6,
+      "min": 80,
+      "max": 81.2,
+      "count": 2
+    }
+  ],
+  "latest": { "date": "2026-10-01", "weightKg": 81.2 },
+  "latestWeek": { "weekStart": "2026-09-28", "average": 80.6 },
+  "change": {
+    "delta": -1.2,
+    "fromWeight": 82.4,
+    "toWeight": 81.2,
+    "since": "2026-09-03",
+    "days": 28
+  },
+  "currentWeekStart": "2026-11-02",
+  "recordedThisWeek": false,
+  "profile": {}
+}
+```
+
+- `change` 只在存在“至少 28 天前”的记录时返回，避免把短期波动描述成四周变化。
+- `profile` 是当前档案；`targetsMode: "auto"` 时，体重变化会同步重算目标。
+- 没有任何记录时，`logs`、`weeks` 为空，`latest`、`latestWeek`、`change` 为 `null`。
+
+### `POST /api/weights`
+
+```json
+{
+  "weightKg": 79.6,
+  "date": "2026-11-04"
+}
+```
+
+- `weightKg`：30–250，服务端保留 1 位小数。
+- `date`：可选，默认今天；不能晚于今天。同一天重复提交会覆盖当天记录，不新增。
+- 记录成功后，服务端把档案体重同步为“最新一条记录”的体重。
+- 自动目标模式（`targetsMode: "auto"`）会按新体重重算热量与三大营养素；手动模式只更新体重，不改目标数值。
+
+成功：新记录 `201`，覆盖当天记录 `200`。
+
+```json
+{
+  "log": { "id": "...", "date": "2026-11-04", "weightKg": 79.6 },
+  "created": false,
+  "profile": {},
+  "targetsUpdated": true
+}
+```
+
+### `DELETE /api/weights/:id`
+
+删除一条记录。成功返回更新后的 `profile` 与 `targetsUpdated`；删除最新一条后，档案体重会回退到剩余记录中最新的一条。
+
+| 状态 | code | 场景 |
+| --- | --- | --- |
+| 400 | `INVALID_WEIGHT` | 体重不在 30–250 或字段缺失 |
+| 400 | `INVALID_WEIGHT_DATE` | 日期不存在 |
+| 400 | `WEIGHT_FUTURE` | 日期晚于今天 |
+| 404 | `WEIGHT_NOT_FOUND` | 记录不属于当前身份或已删除 |
 
 ---
 

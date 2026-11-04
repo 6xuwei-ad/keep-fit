@@ -1,0 +1,389 @@
+.weight-page {
+  padding: 26rpx 28rpx 60rpx;
+}
+
+.page-head {
+  padding: 4rpx 4rpx 24rpx;
+}
+
+.page-title {
+  margin-top: 10rpx;
+  font-size: 60rpx;
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -4rpx;
+}
+
+.page-sub {
+  max-width: 580rpx;
+  margin-top: 14rpx;
+  color: #70786f;
+  font-size: 22rpx;
+  line-height: 1.65;
+}
+
+.weight-hero {
+  padding: 28rpx 26rpx 24rpx;
+  border-radius: 36rpx;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(217, 239, 124, 0.18), transparent 300rpx),
+    #103126;
+  box-shadow: 0 10rpx 26rpx rgba(16, 49, 38, 0.18);
+}
+
+.eyebrow-light {
+  color: #d9ef7c;
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero-date {
+  color: rgba(255, 253, 247, 0.54);
+  font-size: 17rpx;
+}
+
+.hero-number {
+  margin-top: 16rpx;
+  color: #d9ef7c;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 96rpx;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -4rpx;
+}
+
+.hero-unit {
+  margin-left: 8rpx;
+  color: rgba(255, 253, 247, 0.48);
+  font-family: -apple-system, sans-serif;
+  font-size: 20rpx;
+  letter-spacing: 0;
+}
+
+.hero-empty {
+  margin-top: 18rpx;
+  color: rgba(255, 253, 247, 0.72);
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.hero-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 20rpx;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 380rpx;
+  padding: 8rpx 14rpx;
+  color: rgba(255, 253, 247, 0.74);
+  border: 1rpx solid rgba(255, 255, 255, 0.12);
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 18rpx;
+}
+
+.hero-chip.up {
+  color: #f3c3a8;
+}
+
+.hero-chip.down {
+  color: #d9ef7c;
+}
+
+.hero-chip.steady {
+  color: #dfe7d6;
+}
+
+.hero-arrow {
+  margin-right: 6rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.hero-week {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-left: 14rpx;
+}
+
+.hero-week-label {
+  color: rgba(255, 253, 247, 0.44);
+  font-size: 16rpx;
+}
+
+.hero-week-value {
+  margin-top: 2rpx;
+  color: #fffdf7;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.hero-week-value text {
+  color: rgba(255, 253, 247, 0.44);
+  font-family: -apple-system, sans-serif;
+  font-size: 14rpx;
+}
+
+.chart-card,
+.record-card,
+.history-card,
+.info-card {
+  margin-top: 16rpx;
+  padding: 26rpx 24rpx;
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.chart-note {
+  color: #969c93;
+  font-size: 17rpx;
+}
+
+.chart-wrap {
+  margin-top: 16rpx;
+}
+
+.weight-canvas {
+  display: block;
+  width: 100%;
+  height: 330rpx;
+}
+
+.chart-empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 250rpx;
+  margin-top: 12rpx;
+  padding: 30rpx 20rpx;
+  border: 1rpx dashed #deddcf;
+  border-radius: 24rpx;
+  background: #f8f5ea;
+  text-align: center;
+}
+
+.chart-empty-title {
+  color: #15271f;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.chart-empty-copy {
+  max-width: 440rpx;
+  margin-top: 8rpx;
+  color: #70786f;
+  font-size: 19rpx;
+  line-height: 1.6;
+}
+
+.chart-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10rpx;
+  color: #969c93;
+  font-size: 16rpx;
+}
+
+.week-badge {
+  padding: 6rpx 12rpx;
+  color: #7d5b1f;
+  border: 1rpx solid rgba(177, 130, 45, 0.22);
+  border-radius: 999rpx;
+  background: rgba(245, 221, 160, 0.42);
+  font-size: 16rpx;
+  font-weight: 600;
+}
+
+.week-badge.done {
+  color: #1b4b37;
+  border-color: rgba(27, 75, 55, 0.16);
+  background: #eef7c8;
+}
+
+.record-row {
+  display: flex;
+  align-items: flex-end;
+  margin-top: 20rpx;
+}
+
+.record-picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.record-field {
+  padding: 10rpx 14rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 18rpx;
+  background: #f8f5ea;
+}
+
+.record-picker .record-field {
+  margin-right: 12rpx;
+}
+
+.record-field--weight {
+  width: 260rpx;
+  flex: none;
+}
+
+.record-label {
+  display: block;
+  color: #8d948d;
+  font-size: 16rpx;
+}
+
+.record-value {
+  display: flex;
+  height: 48rpx;
+  align-items: center;
+  color: #15271f;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.record-chev {
+  margin-left: 6rpx;
+  color: #969c93;
+  font-size: 24rpx;
+}
+
+.weight-input-wrap {
+  display: flex;
+  height: 48rpx;
+  align-items: center;
+}
+
+.weight-input {
+  min-width: 0;
+  flex: 1;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.weight-input-unit {
+  margin-left: 6rpx;
+  color: #969c93;
+  font-size: 16rpx;
+}
+
+.record-btn {
+  margin-top: 18rpx;
+}
+
+.save-note {
+  margin-top: 12rpx;
+  padding: 10rpx 14rpx;
+  color: #1b4b37;
+  border-radius: 14rpx;
+  background: #eef7c8;
+  font-size: 18rpx;
+  text-align: center;
+}
+
+.record-hint {
+  margin-top: 10rpx;
+  color: #969c93;
+  font-size: 16rpx;
+  text-align: center;
+}
+
+.history-list {
+  margin-top: 12rpx;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid rgba(21, 39, 31, 0.07);
+}
+
+.history-row:last-child {
+  border-bottom: 0;
+}
+
+.history-date {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  color: #31473b;
+  font-size: 21rpx;
+}
+
+.this-week {
+  margin-left: 8rpx;
+  padding: 2rpx 8rpx;
+  color: #1b4b37;
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 14rpx;
+}
+
+.history-weight {
+  margin-right: 18rpx;
+  color: #15271f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 29rpx;
+  font-weight: 600;
+}
+
+.history-weight text {
+  color: #969c93;
+  font-family: -apple-system, sans-serif;
+  font-size: 15rpx;
+}
+
+.history-delete {
+  display: flex;
+  width: 44rpx;
+  height: 44rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: #a4a79f;
+  border-radius: 50%;
+  background: #f3f1e8;
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.info-card {
+  background: rgba(255, 253, 247, 0.74);
+}
+
+.info-title {
+  color: #15271f;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.info-body {
+  margin-top: 8rpx;
+  color: #70786f;
+  font-size: 19rpx;
+  line-height: 1.65;
+}
+
+.info-btn {
+  margin-top: 18rpx;
+}

@@ -12,7 +12,9 @@ import type {
   Meal,
   MealTemplate,
   Profile,
-  RepeatResponse
+  RepeatResponse,
+  WeightLog,
+  WeightTrendResponse
 } from "../../shared/types.ts";
 import { createApp } from "../app.ts";
 import { loadConfig } from "../config.ts";
@@ -323,6 +325,113 @@ test("识别、保存、汇总、删除的完整 API 流程", async (t) => {
   assert.equal(adjustedProfile.targetsMode, "auto");
   assert.equal(adjustedProfile.targets.protein, 145);
   assert.notEqual(adjustedProfile.targets.kcal, bodyProfile.targets.kcal);
+
+  const postWeight = (weightKg: number, date: string) =>
+    fetch(`${base}/api/weights`, {
+      method: "POST",
+      headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+      body: JSON.stringify({ weightKg, date })
+    });
+
+  const today = localDateKey();
+
+  // 目标页改体重时会自动写一条今天的记录，保持档案与趋势一致。
+  const autoWeightLogs = await get("/api/weights");
+  const autoWeightLogsBody = (await autoWeightLogs.json()) as WeightTrendResponse;
+  assert.equal(autoWeightLogsBody.logs.length, 1);
+  assert.equal(autoWeightLogsBody.latest?.weightKg, 80);
+  const removedAutoLog = await fetch(
+    `${base}/api/weights/${autoWeightLogsBody.latest?.id}`,
+    { method: "DELETE", headers: { "x-device-id": DEVICE } }
+  );
+  assert.equal(removedAutoLog.status, 200);
+
+  const emptyWeights = await get("/api/weights");
+  assert.equal(emptyWeights.status, 200);
+  const emptyWeightsBody = (await emptyWeights.json()) as WeightTrendResponse;
+  assert.equal(emptyWeightsBody.logs.length, 0);
+  assert.equal(emptyWeightsBody.latest, null);
+  assert.equal(emptyWeightsBody.recordedThisWeek, false);
+
+  const firstWeight = await postWeight(79.2, today);
+  assert.equal(firstWeight.status, 201);
+  const firstWeightBody = (await firstWeight.json()) as {
+    log: WeightLog;
+    created: boolean;
+    profile: Profile;
+    targetsUpdated: boolean;
+  };
+  assert.equal(firstWeightBody.created, true);
+  assert.equal(firstWeightBody.log.weightKg, 79.2);
+  assert.equal(firstWeightBody.profile.weightKg, 79.2);
+  assert.equal(firstWeightBody.targetsUpdated, true);
+
+  const weightTrend = await get("/api/weights");
+  const weightTrendBody = (await weightTrend.json()) as WeightTrendResponse;
+  assert.equal(weightTrendBody.latest?.weightKg, 79.2);
+  assert.equal(weightTrendBody.weeks.length, 1);
+  assert.equal(weightTrendBody.latestWeek?.average, 79.2);
+  assert.equal(weightTrendBody.recordedThisWeek, true);
+  assert.equal(weightTrendBody.change, null);
+
+  // 同一天再次记录是修正，不新增一条。
+  const sameDayWeight = await postWeight(78.8, today);
+  assert.equal(sameDayWeight.status, 200);
+  const sameDayBody = (await sameDayWeight.json()) as {
+    log: WeightLog;
+    created: boolean;
+    profile: Profile;
+  };
+  assert.equal(sameDayBody.created, false);
+  assert.equal(sameDayBody.log.weightKg, 78.8);
+  const afterSameDay = (await (await get("/api/weights")).json()) as WeightTrendResponse;
+  assert.equal(afterSameDay.logs.length, 1);
+
+  // 回填 35 天前的记录，档案仍取最新一条作为当前体重。
+  const backfillDate = shiftDateKey(today, -35);
+  const backfillWeight = await postWeight(81.2, backfillDate);
+  assert.equal(backfillWeight.status, 201);
+  const backfillBody = (await backfillWeight.json()) as {
+    log: WeightLog;
+    profile: Profile;
+  };
+  assert.equal(backfillBody.profile.weightKg, 78.8);
+  const withBackfill = (await (await get("/api/weights")).json()) as WeightTrendResponse;
+  assert.equal(withBackfill.logs.length, 2);
+  assert.equal(withBackfill.latest?.weightKg, 78.8);
+  assert.equal(withBackfill.change?.delta, -2.4);
+  assert.equal(withBackfill.change?.days, 35);
+
+  const foreignWeights = await fetch(`${base}/api/weights`, {
+    headers: { "x-device-id": "test-device-0002" }
+  });
+  const foreignWeightsBody = (await foreignWeights.json()) as WeightTrendResponse;
+  assert.equal(foreignWeightsBody.logs.length, 0);
+
+  const badWeight = await postWeight(20, today);
+  assert.equal(badWeight.status, 400);
+  assert.equal(((await badWeight.json()) as { code: string }).code, "INVALID_WEIGHT");
+
+  const futureWeight = await postWeight(70, shiftDateKey(today, 1));
+  assert.equal(futureWeight.status, 400);
+  assert.equal(((await futureWeight.json()) as { code: string }).code, "WEIGHT_FUTURE");
+
+  const deleteBackfill = await fetch(`${base}/api/weights/${backfillBody.log.id}`, {
+    method: "DELETE",
+    headers: { "x-device-id": DEVICE }
+  });
+  assert.equal(deleteBackfill.status, 200);
+  const deleteBackfillBody = (await deleteBackfill.json()) as { profile: Profile };
+  assert.equal(deleteBackfillBody.profile.weightKg, 78.8);
+
+  const deleteLatest = await fetch(`${base}/api/weights/${sameDayBody.log.id}`, {
+    method: "DELETE",
+    headers: { "x-device-id": DEVICE }
+  });
+  assert.equal(deleteLatest.status, 200);
+  const afterDeleteWeights = (await (await get("/api/weights")).json()) as WeightTrendResponse;
+  assert.equal(afterDeleteWeights.logs.length, 0);
+  assert.equal(afterDeleteWeights.profile.weightKg, 78.8);
 
   const manualOverride = await fetch(`${base}/api/profile`, {
     method: "PUT",

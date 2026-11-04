@@ -69,7 +69,8 @@ wx.login() → POST /api/auth/wechat → 服务端 code2Session → 签发会话
 | 确认份量 | `pages/review/index` | 识别结果、克数实时重算、剩饭比例、份量参照、补食物、保存 |
 | 添加食物 | `pages/food-search/index` | 搜索 80+ 本地食物库、最近吃过 |
 | 日记 | `pages/journal/index` | 日期切换、餐食列表、再来一份、存为常用餐、删除 |
-| 目标 | `pages/goals/index` | 昵称、减脂/维持/增肌、身体数据、自动目标 |
+| 目标 | `pages/goals/index` | 昵称、减脂/维持/增肌、身体数据、自动目标、体重趋势入口 |
+| 体重趋势 | `pages/weight/index` | 每周记录、12 周折线、周平均、删除记录；新体重自动同步目标 |
 
 ## 5. 结构
 
@@ -94,7 +95,8 @@ miniprogram/
 │  ├─ review/
 │  ├─ food-search/
 │  ├─ journal/
-│  └─ goals/
+│  ├─ goals/
+│  └─ weight/
 └─ images/                     # tabBar 图标、示例餐盘、logo
 ```
 
@@ -103,6 +105,7 @@ miniprogram/
 - 小程序是唯一客户端，直接调用同一个 API、同一套食物库和营养规则。
 - `miniprogram/utils/nutrition.js`、`advice.js`、`body.js` 是 `shared/` 的 JS 版本，修改规则时必须两边同步，`npm test` 会校验计算结果一致。
 - `portion.js` 只在小程序端使用，不涉及服务端保存格式。
+- 体重页只负责录入和画图；自然周平均、28 天变化由服务端 `shared/weight.ts` 计算，客户端不重复实现，避免两边口径漂移。
 
 ## 7. 上线前检查
 

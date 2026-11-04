@@ -9,7 +9,13 @@ import {
   sumNutrition
 } from "../../shared/nutrition.ts";
 import { buildPlateQuality } from "../../shared/advice.ts";
-import type { FoodItem, NutritionFacts, Targets } from "../../shared/types.ts";
+import {
+  aggregateWeightWeeks,
+  weekEndKey,
+  weekStartKey,
+  weightChange
+} from "../../shared/weight.ts";
+import type { FoodItem, NutritionFacts, Targets, WeightLog } from "../../shared/types.ts";
 
 const targets: Targets = {
   kcal: 1800,
@@ -64,6 +70,49 @@ test("日期与餐次按上海时区推断", () => {
   const utcNoon = new Date("2026-10-31T04:00:00.000Z");
   assert.equal(localDateKey(utcNoon), "2026-10-31");
   assert.equal(inferMealType(utcNoon), "lunch");
+});
+
+test("体重按自然周聚合，并只在有足够早记录时计算变化", () => {
+  assert.equal(weekStartKey("2026-11-04"), "2026-11-02");
+  assert.equal(weekEndKey("2026-11-04"), "2026-11-08");
+
+  const log = (date: string, weightKg: number): WeightLog => ({
+    id: date,
+    date,
+    weightKg,
+    createdAt: `${date}T08:00:00.000Z`,
+    updatedAt: `${date}T08:00:00.000Z`
+  });
+  const logs = [log("2026-10-01", 80), log("2026-10-03", 81), log("2026-10-08", 79.5)];
+  const weeks = aggregateWeightWeeks(logs);
+  assert.deepEqual(weeks, [
+    {
+      weekStart: "2026-09-28",
+      weekEnd: "2026-10-04",
+      average: 80.5,
+      min: 80,
+      max: 81,
+      count: 2
+    },
+    {
+      weekStart: "2026-10-05",
+      weekEnd: "2026-10-11",
+      average: 79.5,
+      min: 79.5,
+      max: 79.5,
+      count: 1
+    }
+  ]);
+
+  assert.equal(weightChange([log("2026-10-08", 79.5)], 7), null);
+  const change = weightChange(logs, 7);
+  assert.deepEqual(change, {
+    delta: -0.5,
+    fromWeight: 80,
+    toWeight: 79.5,
+    since: "2026-10-01",
+    days: 7
+  });
 });
 
 test("餐盘质量评分在 30–98 之间并给出摘要", () => {

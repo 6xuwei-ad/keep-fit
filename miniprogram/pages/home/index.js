@@ -132,7 +132,9 @@ Page({
     isOver: false,
     dateText: "今天",
     mealCount: 0,
-    todayNote: "今天还没有记录。第一张照片，就是更清楚饮食的开始。"
+    todayNote: "今天还没有记录。第一张照片，就是更清楚饮食的开始。",
+    weightLatest: "",
+    weightSummary: "每周记一次，看看变化"
   },
 
   onLoad() {
@@ -166,13 +168,16 @@ Page({
           api.getDay(today),
           api.getMeta(),
           // 常用餐/昨天是增强入口，旧服务端或接口异常时不应拖垮首页。
-          api.getRepeat().catch(() => ({ templates: [], yesterday: [] }))
+          api.getRepeat().catch(() => ({ templates: [], yesterday: [] })),
+          // 体重入口同理，加载失败时只是不显示数字。
+          api.getWeights().catch(() => null)
         ])
       )
       .then((results) => {
         const day = results[0];
         const meta = results[1];
         const repeat = results[2] || {};
+        const weights = results[3] || {};
         const app = getApp();
         if (day.profile) app.globalData.profile = day.profile;
         const summary = day.summary || EMPTY_SUMMARY;
@@ -183,6 +188,15 @@ Page({
         const percent = summary.caloriePercent || 0;
         const templates = (repeat.templates || []).map(formatTemplate);
         const yesterdayMeals = (repeat.yesterday || []).map(formatYesterday);
+        const latestWeight = weights.latest || null;
+        const weightLatest = latestWeight ? Number(latestWeight.weightKg).toFixed(1) : "";
+        let weightSummary = "每周记一次，看看变化";
+        if (latestWeight) {
+          const weightDate = format.friendlyDate(latestWeight.date);
+          weightSummary = weights.recordedThisWeek
+            ? `本周已记录 · ${weightDate}`
+            : `上次 ${weightDate}`;
+        }
         let todayNote = "今天还没有记录。第一张照片，就是更清楚饮食的开始。";
         if (meals.length > 0) {
           if (percent >= 100) todayNote = "今天的目标基本达成，晚些时候清淡一点就好。";
@@ -213,7 +227,9 @@ Page({
           isOver: remainingKcal < 0,
           dateText: format.friendlyDate(summary.date || today),
           mealCount: (summary.meals || []).length,
-          todayNote
+          todayNote,
+          weightLatest,
+          weightSummary
         });
       })
       .catch((error) => {

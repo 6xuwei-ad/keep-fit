@@ -17,10 +17,11 @@ import type {
   Profile,
   Sex,
   Targets,
-  TargetsMode
+  TargetsMode,
+  WeightLog
 } from "../shared/types.ts";
 import { DEFAULT_TARGETS, round } from "../shared/nutrition.ts";
-import { bodyMetrics, isBodyComplete } from "../shared/body.ts";
+import { bodyMetrics, computeTargets, isBodyComplete } from "../shared/body.ts";
 
 interface ProfileRow {
   device_id: string;
@@ -92,6 +93,15 @@ interface TemplateRow {
   created_at: string;
   updated_at: string;
   last_used_at: string;
+}
+
+interface WeightRow {
+  id: string;
+  device_id: string;
+  date: string;
+  weight_kg: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface RecentFoodRecord {
@@ -172,6 +182,16 @@ function mapItem(row: ItemRow): FoodItem {
       fiber: row.fiber
     },
     source: row.source === "database" ? "database" : "ai"
+  };
+}
+
+function mapWeight(row: WeightRow): WeightLog {
+  return {
+    id: row.id,
+    date: row.date,
+    weightKg: row.weight_kg,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
 
@@ -287,10 +307,22 @@ export class Store {
         FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE
       );
 
+      CREATE TABLE IF NOT EXISTS weight_logs (
+        id TEXT PRIMARY KEY,
+        device_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        weight_kg REAL NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE,
+        UNIQUE (device_id, date)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_meals_device_date ON meals(device_id, date, eaten_at);
       CREATE INDEX IF NOT EXISTS idx_items_meal ON meal_items(meal_id, order_index);
       CREATE INDEX IF NOT EXISTS idx_items_food ON meal_items(food_id);
       CREATE INDEX IF NOT EXISTS idx_templates_device ON meal_templates(device_id, last_used_at);
+      CREATE INDEX IF NOT EXISTS idx_weights_device_date ON weight_logs(device_id, date);
     `);
 
     // 老版本数据库没有身体数据字段，逐列补齐，保留已有目标值。
@@ -382,7 +414,11 @@ export class Store {
         patch.sex !== undefined ? patch.sex : current.sex,
         patch.age !== undefined ? patch.age : current.age,
         patch.heightCm !== undefined ? patch.heightCm : current.heightCm,
-        patch.weightKg !== undefined ? patch.weightKg : current.weightKg,
+        patch.weightKg !== undefined
+          ? patch.weightKg === null
+            ? null
+            : round(patch.weightKg, 1)
+          : current.weightKg,
         patch.activityLevel !== undefined ? patch.activityLevel : current.activityLevel,
         patch.targetsMode ?? current.targetsMode,
         round(targets.kcal, 0),
@@ -637,6 +673,100 @@ export class Store {
       .prepare("DELETE FROM meal_templates WHERE device_id = ? AND id = ?")
       .run(deviceId, id);
     return Number(result.changes) > 0;
+  }
+
+  /** 按日期升序返回，方便直接画折线；只保留最近 limit 条。 */
+  listWeightLogs(deviceId: string, limit = 180): WeightLog[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM (
+           SELECT * FROM weight_logs WHERE device_id = ? ORDER BY date DESC LIMIT ?
+         ) ORDER BY date ASC`
+      )
+      .all(deviceId, limit) as unknown as WeightRow[];
+    return rows.map(mapWeight);
+  }
+
+  getLatestWeightLog(deviceId: string): WeightLog | null {
+    const row = this.db
+      .prepare(
+        `SELECT * FROM weight_logs WHERE device_id = ?
+         ORDER BY date DESC, updated_at DESC LIMIT 1`
+      )
+      .get(deviceId) as WeightRow | undefined;
+    return row ? mapWeight(row) : null;
+  }
+
+  /** 同一天重复记录视为修正，不新增第二条。 */
+  upsertWeightLog(
+    deviceId: string,
+    input: { date: string; weightKg: number }
+  ): { log: WeightLog; created: boolean } {
+    this.ensureProfile(deviceId);
+    const now = new Date().toISOString();
+    const existing = this.db
+      .prepare("SELECT * FROM weight_logs WHERE device_id = ? AND date = ?")
+      .get(deviceId, input.date) as WeightRow | undefined;
+
+    if (existing) {
+      this.db
+        .prepare(
+          "UPDATE weight_logs SET weight_kg = ?, updated_at = ? WHERE device_id = ? AND id = ?"
+        )
+        .run(input.weightKg, now, deviceId, existing.id);
+      return { log: this.getWeightLog(deviceId, existing.id)!, created: false };
+    }
+
+    const id = randomUUID();
+    this.db
+      .prepare(
+        `INSERT INTO weight_logs (id, device_id, date, weight_kg, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(id, deviceId, input.date, input.weightKg, now, now);
+    return { log: this.getWeightLog(deviceId, id)!, created: true };
+  }
+
+  getWeightLog(deviceId: string, id: string): WeightLog | null {
+    const row = this.db
+      .prepare("SELECT * FROM weight_logs WHERE device_id = ? AND id = ?")
+      .get(deviceId, id) as WeightRow | undefined;
+    return row ? mapWeight(row) : null;
+  }
+
+  deleteWeightLog(deviceId: string, id: string): boolean {
+    const result = this.db
+      .prepare("DELETE FROM weight_logs WHERE device_id = ? AND id = ?")
+      .run(deviceId, id);
+    return Number(result.changes) > 0;
+  }
+
+  /**
+   * 把档案里的体重同步到最近一条体重记录，并在自动模式下重算目标。
+   * 回填旧日期时，档案仍以最新一条记录为准。
+   */
+  syncWeightToProfile(deviceId: string): { profile: Profile; targetsUpdated: boolean } {
+    const current = this.ensureProfile(deviceId);
+    const latest = this.getLatestWeightLog(deviceId);
+    if (!latest) return { profile: current, targetsUpdated: false };
+    if (current.weightKg !== null && Math.abs(current.weightKg - latest.weightKg) < 0.001) {
+      return { profile: current, targetsUpdated: false };
+    }
+
+    const body: BodyProfile = {
+      sex: current.sex,
+      age: current.age,
+      heightCm: current.heightCm,
+      weightKg: latest.weightKg,
+      activityLevel: current.activityLevel
+    };
+    const auto = current.targetsMode === "auto" && isBodyComplete(body);
+    const targets = auto ? computeTargets(body, current.goal).targets : undefined;
+    const profile = this.updateProfile(deviceId, {
+      weightKg: latest.weightKg,
+      ...(targets ? { targets } : {})
+    });
+    return { profile, targetsUpdated: auto };
   }
 
   /** 最近吃过的食物，按食物去重，用于食物搜索的快捷入口。 */
