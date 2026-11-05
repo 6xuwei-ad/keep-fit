@@ -1,11 +1,19 @@
 <view class="search-page">
+  <view wx:if="{{mode == 'replace'}}" class="replace-banner">
+    <view class="replace-copy">
+      <text class="replace-label">正在替换</text>
+      <text class="replace-name">{{replaceName}}</text>
+    </view>
+    <text class="replace-hint">选中后保留当前克数</text>
+  </view>
+
   <view class="search-box">
     <text class="search-icon">⌕</text>
     <input
       class="search-input"
       value="{{query}}"
-      focus="{{true}}"
-      placeholder="搜索米饭、鸡胸肉、西兰花…"
+      focus="{{!showEditor}}"
+      placeholder="{{mode == 'replace' ? '搜索要换成的食物…' : '搜索米饭、鸡胸肉、西兰花…'}}"
       bindinput="onInput"
       confirm-type="search"
     />
@@ -14,13 +22,109 @@
 
   <view class="search-meta">
     <text>{{query ? '搜索“' + query + '”' : '常用食材'}}</text>
-    <text>营养值按每 100g</text>
+    <view class="meta-right">
+      <text>每 100g</text>
+      <text class="new-food-link" bindtap="onNewCustom">＋ 新建食物</text>
+    </view>
+  </view>
+
+  <view wx:if="{{showEditor}}" class="card editor-card">
+    <view class="editor-head">
+      <view>
+        <text class="eyebrow">MY FOOD</text>
+        <view class="section-title">{{editingId ? '编辑食物' : '新建食物'}}</view>
+      </view>
+      <view class="editor-close" bindtap="onCancelCustom">×</view>
+    </view>
+    <view class="editor-hint">填每 100g 的营养值。保存后会在搜索结果里优先显示，并带有「我的」标记。</view>
+
+    <view class="form-row">
+      <view class="form-field form-field--name">
+        <text class="form-label">名称</text>
+        <input class="form-input" value="{{form.name}}" data-key="name" bindinput="onFormInput" placeholder="例如：妈妈做的番茄炒蛋" maxlength="40" />
+      </view>
+      <view class="form-field form-field--emoji">
+        <text class="form-label">图标</text>
+        <input class="form-input form-input--center" value="{{form.emoji}}" data-key="emoji" bindinput="onFormInput" maxlength="2" />
+      </view>
+    </view>
+
+    <view class="form-field">
+      <text class="form-label">分类</text>
+      <picker mode="selector" range="{{categoryLabels}}" value="{{form.categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-value">{{form.categoryLabel}} <text class="picker-chev">›</text></view>
+      </picker>
+    </view>
+
+    <text class="form-section">每 100g 营养</text>
+    <view class="nutrition-grid">
+      <view class="nutrition-field">
+        <text class="form-label">热量</text>
+        <view class="nutrition-input-wrap">
+          <input class="form-input" type="digit" value="{{form.kcal}}" data-key="kcal" bindinput="onFormInput" placeholder="0" />
+          <text class="nutrition-unit">kcal</text>
+        </view>
+      </view>
+      <view class="nutrition-field">
+        <text class="form-label">蛋白质</text>
+        <view class="nutrition-input-wrap">
+          <input class="form-input" type="digit" value="{{form.protein}}" data-key="protein" bindinput="onFormInput" placeholder="0" />
+          <text class="nutrition-unit">g</text>
+        </view>
+      </view>
+      <view class="nutrition-field">
+        <text class="form-label">碳水</text>
+        <view class="nutrition-input-wrap">
+          <input class="form-input" type="digit" value="{{form.carbs}}" data-key="carbs" bindinput="onFormInput" placeholder="0" />
+          <text class="nutrition-unit">g</text>
+        </view>
+      </view>
+      <view class="nutrition-field">
+        <text class="form-label">脂肪</text>
+        <view class="nutrition-input-wrap">
+          <input class="form-input" type="digit" value="{{form.fat}}" data-key="fat" bindinput="onFormInput" placeholder="0" />
+          <text class="nutrition-unit">g</text>
+        </view>
+      </view>
+      <view class="nutrition-field">
+        <text class="form-label">膳食纤维</text>
+        <view class="nutrition-input-wrap">
+          <input class="form-input" type="digit" value="{{form.fiber}}" data-key="fiber" bindinput="onFormInput" placeholder="0" />
+          <text class="nutrition-unit">g</text>
+        </view>
+      </view>
+    </view>
+
+    <text class="form-section">常用份量（可选）</text>
+    <view class="form-row">
+      <view class="form-field">
+        <text class="form-label">份量名称</text>
+        <input class="form-input" value="{{form.portionLabel}}" data-key="portionLabel" bindinput="onFormInput" placeholder="一掌心" maxlength="12" />
+      </view>
+      <view class="form-field form-field--grams">
+        <text class="form-label">约多少克</text>
+        <view class="nutrition-input-wrap">
+          <input class="form-input" type="digit" value="{{form.portionGrams}}" data-key="portionGrams" bindinput="onFormInput" placeholder="100" />
+          <text class="nutrition-unit">g</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{formError}}" class="form-error">{{formError}}</view>
+
+    <view class="editor-actions">
+      <button wx:if="{{editingId}}" class="btn btn-soft btn-small editor-delete" bindtap="onDeleteCustom">删除</button>
+      <view class="editor-actions-right">
+        <button class="btn btn-soft btn-small" bindtap="onCancelCustom">取消</button>
+        <button class="btn btn-primary btn-small" bindtap="onSaveCustom" disabled="{{saving}}">{{saving ? '保存中…' : '保存食物'}}</button>
+      </view>
+    </view>
   </view>
 
   <view wx:if="{{!query && recent.length > 0}}" class="recent-block">
     <view class="recent-head">
       <text class="recent-title">最近吃过</text>
-      <text class="recent-hint">点一下加回这一餐</text>
+      <text class="recent-hint">{{mode == 'replace' ? '点一下替换当前食物' : '点一下加回这一餐'}}</text>
     </view>
     <scroll-view scroll-x class="recent-scroll" show-scrollbar="{{false}}">
       <view
@@ -33,25 +137,33 @@
         <text class="recent-emoji">{{item.emoji}}</text>
         <text class="recent-name">{{item.name}}</text>
         <text class="recent-kcal">{{item.kcal}} kcal</text>
-        <text class="recent-add">＋</text>
+        <text class="recent-add">{{mode == 'replace' ? '换' : '＋'}}</text>
       </view>
     </scroll-view>
   </view>
 
   <view wx:if="{{loading}}" class="state">正在查找…</view>
   <view wx:elif="{{error}}" class="state error">{{error}}</view>
-  <view wx:elif="{{foods.length == 0}}" class="state">没有找到，换个关键词试试</view>
+  <view wx:elif="{{foods.length == 0}}" class="state">
+    没有找到，换个关键词试试；也可以点上方「新建食物」。
+  </view>
 
   <view wx:else class="food-list">
     <view wx:for="{{foods}}" wx:key="id" class="food-item" data-index="{{index}}" bindtap="onAdd">
       <view class="food-emoji">{{item.emoji}}</view>
       <view class="food-info">
-        <text class="food-name">{{item.name}}</text>
+        <view class="food-name-row">
+          <text class="food-name">{{item.name}}</text>
+          <text wx:if="{{item.isCustom}}" class="mine-tag">我的</text>
+        </view>
         <text class="food-sub">{{item.categoryLabel}} · {{item.kcal}} kcal / 100g</text>
       </view>
-      <view class="add-btn">＋</view>
+      <text wx:if="{{item.isCustom}}" class="edit-link" data-index="{{index}}" catchtap="onEditCustom">编辑</text>
+      <view class="add-btn">{{mode == 'replace' ? '换' : '＋'}}</view>
     </view>
   </view>
 
-  <view class="search-foot">每 100g 营养值来自内置食物库，实际烹饪方式会影响结果。</view>
+  <view class="search-foot">
+    {{mode == 'replace' ? '替换只影响这一项，克数会保持不变。' : '内置食物库 + 我的食物，实际烹饪方式会影响结果。'}}
+  </view>
 </view>

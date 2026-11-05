@@ -305,17 +305,86 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
       "portions": [
         { "label": "半掌心", "grams": 80 },
         { "label": "一掌心", "grams": 120 }
-      ]
+      ],
+      "source": "builtin"
     }
   ]
 }
 ```
 
-最多 24 条。匹配规则：完全命中 > 前缀 > 包含；别名也参与匹配。
+最多 24 条。内置食物 `source` 为 `builtin`；用户自定义食物 `source` 为 `custom`，同名时排在前面并隐藏同名内置项。匹配规则：自定义食物优先，内置库按“完全命中 > 前缀 > 包含”，别名也参与匹配。
 
 ### `GET /api/foods?recent=1`
 
-返回最近吃过的食物，按最近一次用餐时间去重，最多 20 种，供食物搜索的快捷入口使用。结构与 `GET /api/foods` 相同；如果某条记录不在内置食物库中，`portions` 为空数组。
+返回最近吃过的食物，按最近一次用餐时间去重，最多 20 种，供食物搜索的快捷入口使用。结构与 `GET /api/foods` 相同；自定义食物会按 `foodId` 重新读取最新营养值，不在库中的旧记录返回空 `portions`。
+
+### `GET /api/custom-foods`
+
+返回当前身份的自定义食物，最多 100 条，按最近更新排序。
+
+```json
+{
+  "foods": [
+    {
+      "id": "custom_b6f0e7d2-...",
+      "name": "妈妈做的番茄炒蛋",
+      "emoji": "🍳",
+      "category": "dish",
+      "per100g": { "kcal": 120, "protein": 6, "carbs": 8, "fat": 7, "fiber": 1 },
+      "portions": [{ "label": "一小碟", "grams": 150 }],
+      "createdAt": "2026-11-05T08:00:00.000Z",
+      "updatedAt": "2026-11-05T08:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `POST /api/custom-foods`
+
+```json
+{
+  "name": "妈妈做的番茄炒蛋",
+  "emoji": "🍳",
+  "category": "dish",
+  "per100g": { "kcal": 120, "protein": 6, "carbs": 8, "fat": 7, "fiber": 1 },
+  "portions": [{ "label": "一小碟", "grams": 150 }]
+}
+```
+
+- `name`：1–40 字，同一身份不能重名，重复返回 `409 CUSTOM_FOOD_EXISTS`。
+- `per100g`：每 100g 营养值，范围与内置食物一致。
+- `portions`：最多 5 个，每个 `label` 1–12 字、`grams` 1–3000；可省略。
+- 成功：`201 { "food": {...} }`。
+
+### `PUT /api/custom-foods/:id`
+
+请求体同 `POST`，用于修改名称、分类、营养值和份量。成功返回 `200 { "food": {...} }`。
+
+### `DELETE /api/custom-foods/:id`
+
+成功 `204`。已保存的饮食记录不会受影响，因为餐次保存的是营养快照。
+
+### `POST /api/aliases`
+
+把“模型/用户原来看到的叫法”记到当前身份下，下次识别时优先替换成指定食物。
+
+```json
+{
+  "alias": "香煎豆腐",
+  "foodId": "custom_b6f0e7d2-...",
+  "name": "妈妈做的番茄炒蛋",
+  "emoji": "🍳",
+  "category": "dish",
+  "per100g": { "kcal": 120, "protein": 6, "carbs": 8, "fat": 7, "fiber": 1 },
+  "portionHint": "一小碟 · 150g"
+}
+```
+
+- 别名按去除空格、括号与常见标点，再转小写后去重；同一别名再次提交会覆盖旧映射。
+- 每个身份最多 200 条，超出后淘汰最久未更新的。
+- 别名只影响当前身份；`POST /api/analyze` 在返回结果前应用，示例餐盘保持固定内容。
+- 修改自定义食物时，指向它的别名快照会同步刷新；删除自定义食物后别名仍保留旧快照。
+- 成功：`201 { "alias": {...} }`。
 
 ---
 
@@ -408,8 +477,9 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 - `provider`：`vision` | `demo`；`demo` 时小程序必须展示 `notice`。
 - `confidence`：0–1。
-- `source`：`database`（命中本地营养库）或 `ai`（模型估值）。
+- `source`：`database`（命中本地营养库）、`custom`（用户自定义食物）或 `ai`（模型估值）。
 - `items[].name` 保留模型识别到的具体做法，`per100g` 可能来自库。
+- 识别结果返回前会先应用当前身份的别名；命中别名时使用别名快照的 `foodId`、名称、营养值和份量提示，`confidence` 至少提升到 0.9。
 - `advice` 固定 3 条，但某些异常情况下可能少于 3（客户端不应假设长度）。
 - `suggestedMealType`：根据服务端当前时间推断，用户可在保存前修改。
 

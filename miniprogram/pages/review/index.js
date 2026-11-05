@@ -33,6 +33,7 @@ Page({
     mealTypeOptions: mealTypeOptions("lunch"),
     mealPercent: 0,
     avgConfidence: 0,
+    lowConfidenceCount: 0,
     saving: false,
     saveAsTemplate: false,
     portionRatio: 1,
@@ -90,6 +91,13 @@ Page({
 
   onShow() {
     const app = getApp();
+    const replace = app.globalData.pendingReplace;
+    if (replace) {
+      app.globalData.pendingReplace = null;
+      app.globalData.foodSearchMode = null;
+      this.replaceFood(replace.index, replace.food);
+      return;
+    }
     const food = app.globalData.pendingFood;
     if (food) {
       app.globalData.pendingFood = null;
@@ -106,6 +114,7 @@ Page({
         portionRefs: portion.referencesFor(item),
         nutrition: value,
         confidencePct: Math.round((item.confidence || 0.7) * 100),
+        lowConfidence: (item.confidence || 0.7) < 0.6,
         kcalText: Math.round(value.kcal),
         proteinText: nutrition.round(value.protein),
         carbsText: nutrition.round(value.carbs),
@@ -122,9 +131,11 @@ Page({
           (items.reduce((sum, item) => sum + (item.confidence || 0.7), 0) / items.length) * 100
         )
       : 0;
+    const lowConfidenceCount = items.filter((item) => item.lowConfidence).length;
 
     this.setData({
       items,
+      lowConfidenceCount,
       totals: {
         kcal: Math.round(totals.kcal),
         protein: nutrition.round(totals.protein),
@@ -200,6 +211,62 @@ Page({
     this.recalc(items);
   },
 
+  onReplace(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    const item = this.data.items[index];
+    if (!item) return;
+    const app = getApp();
+    app.globalData.foodSearchMode = "replace";
+    app.globalData.foodSearchReplaceIndex = index;
+    app.globalData.foodSearchReplaceName = item.name;
+    wx.navigateTo({ url: `/pages/food-search/index?mode=replace&index=${index}` });
+  },
+
+  replaceFood(index, food) {
+    if (!food || !food.per100g) return;
+    const items = this.data.items.slice();
+    const current = items[index];
+    if (!current) return;
+    const firstPortion = food.portions && food.portions[0];
+    const replaced = {
+      foodId: food.id,
+      name: food.name,
+      emoji: food.emoji || "🍽️",
+      category: food.category,
+      grams: current.grams,
+      confidence: 1,
+      portionHint: firstPortion
+        ? `${firstPortion.label} · ${firstPortion.grams}g`
+        : "手动替换",
+      per100g: food.per100g,
+      source: food.source === "custom" ? "custom" : "database"
+    };
+    items[index] = portion.setGrams(
+      Object.assign({}, current, replaced),
+      current.grams,
+      this.data.portionRatio
+    );
+    this.recalc(items);
+
+    // 记住“模型原来怎么叫”，下次识别优先用用户确认过的食物。
+    if (current.name && (current.name !== food.name || current.foodId !== food.id)) {
+      api
+        .saveAlias({
+          alias: current.name,
+          foodId: food.id,
+          name: food.name,
+          emoji: food.emoji || "🍽️",
+          category: food.category,
+          per100g: food.per100g,
+          portionHint: replaced.portionHint
+        })
+        .catch(() => {
+          // 别名只是增强，失败不影响这次替换。
+        });
+    }
+    wx.showToast({ title: `已换成${food.name}`, icon: "none" });
+  },
+
   onAddFood() {
     wx.navigateTo({ url: "/pages/food-search/index" });
   },
@@ -236,7 +303,7 @@ Page({
         portionHint: portion ? `${portion.label} · ${portion.grams}g` : "手动添加",
         per100g: food.per100g,
         nutrition: nutrition.scale(food.per100g, grams),
-        source: "database"
+        source: food.source === "custom" ? "custom" : "database"
       };
       items.push(portion.setGrams(added, grams, this.data.portionRatio));
       wx.showToast({ title: `已添加${food.name}`, icon: "none" });

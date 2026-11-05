@@ -159,6 +159,21 @@ module.exports = {
   deleteWeight(id) {
     return request(`/api/weights/${id}`, { method: "DELETE" });
   },
+  getCustomFoods() {
+    return request("/api/custom-foods");
+  },
+  saveCustomFood(payload, id) {
+    return request(id ? `/api/custom-foods/${id}` : "/api/custom-foods", {
+      method: id ? "PUT" : "POST",
+      data: payload
+    });
+  },
+  deleteCustomFood(id) {
+    return request(`/api/custom-foods/${id}`, { method: "DELETE" });
+  },
+  saveAlias(payload) {
+    return request("/api/aliases", { method: "POST", data: payload });
+  },
   searchFoods(query) {
     return request(`/api/foods?q=${encodeURIComponent(query || "")}`);
   },

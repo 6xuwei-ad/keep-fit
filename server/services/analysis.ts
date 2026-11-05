@@ -21,7 +21,9 @@ export function assembleAnalysis(input: AssembleInput, targets: Targets): Analys
         confidence: item.confidence,
         category: item.category,
         per100g: item.per100g,
-        portionHint: item.portionHint
+        portionHint: item.portionHint,
+        foodId: item.foodId,
+        emoji: item.emoji
       })
     )
   );

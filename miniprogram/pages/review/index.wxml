@@ -18,6 +18,11 @@
     <text>{{notice}}</text>
   </view>
 
+  <view wx:if="{{lowConfidenceCount > 0}}" class="uncertain-note">
+    <text class="uncertain-icon">!</text>
+    <text>有 {{lowConfidenceCount}} 项不太确定，点「换一种」核对一下，下次会自动记住。</text>
+  </view>
+
   <view class="photo-card">
     <image class="photo" src="{{imageUrl}}" mode="aspectFill"></image>
     <view class="photo-shade"></view>
@@ -125,12 +130,13 @@
   </view>
 
   <view wx:else class="food-list">
-    <view wx:for="{{items}}" wx:key="id" class="card food-card">
+    <view wx:for="{{items}}" wx:key="id" class="card food-card {{item.lowConfidence ? 'uncertain' : ''}}">
       <view class="food-main">
         <view class="food-avatar">{{item.emoji}}</view>
         <view class="food-info">
           <view class="food-name">{{item.name}}</view>
           <text class="food-hint">{{item.portionHint}} · 置信度 {{item.confidencePct}}%</text>
+          <text wx:if="{{item.lowConfidence}}" class="uncertain-hint">不太确定，建议核对</text>
           <view class="confidence-track">
             <view class="confidence-fill" style="width: {{item.confidencePct}}%;"></view>
           </view>
@@ -157,7 +163,10 @@
           </view>
           <button class="gram-btn" data-index="{{index}}" data-delta="{{10}}" bindtap="onStep">＋</button>
         </view>
-        <button class="remove-btn" data-index="{{index}}" bindtap="onRemove">移除</button>
+        <view class="food-actions">
+          <button class="swap-btn" data-index="{{index}}" bindtap="onReplace">换一种</button>
+          <button class="remove-btn" data-index="{{index}}" bindtap="onRemove">移除</button>
+        </view>
       </view>
 
       <view wx:if="{{item.portionRefs.length > 0}}" class="portion-refs">

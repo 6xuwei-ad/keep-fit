@@ -7,7 +7,9 @@ import type {
   ActivityLevel,
   AppMeta,
   CreateMealInput,
+  CustomFood,
   DaySummary,
+  FoodCatalogItem,
   FoodCategory,
   FoodItem,
   Goal,
@@ -24,6 +26,7 @@ import type {
 import { buildDailyAdvice } from "../shared/advice.ts";
 import { computeTargets, isBodyComplete } from "../shared/body.ts";
 import { aggregateWeightWeeks, weekStartKey, weightChange } from "../shared/weight.ts";
+import { applyAliases, normalizeAlias } from "./services/aliases.ts";
 import {
   GOAL_TARGETS,
   caloriePercent,
@@ -36,7 +39,7 @@ import {
 import { AppError } from "./lib/errors.ts";
 import { detectImage, saveImage } from "./lib/image.ts";
 import { signSession, verifySession } from "./lib/session.ts";
-import { FOOD_BY_ID, searchFoods } from "./data/foods.ts";
+import { FOOD_BY_ID, searchFoods, type FoodRecord } from "./data/foods.ts";
 import { assembleAnalysis } from "./services/analysis.ts";
 import { itemsTotal, makeFoodItem } from "./services/items.ts";
 import { buildDemoRecognition, recognizeFood } from "./services/vision.ts";
@@ -136,6 +139,44 @@ const weightSchema = z.object({
     .optional()
 });
 
+const portionsSchema = z
+  .array(
+    z.object({
+      label: z.string().trim().min(1).max(12),
+      grams: z.coerce.number().min(1).max(3000)
+    })
+  )
+  .max(5)
+  .optional();
+
+const customNutritionSchema = z.object({
+  kcal: z.coerce.number().min(0).max(900),
+  protein: z.coerce.number().min(0).max(100),
+  carbs: z.coerce.number().min(0).max(100),
+  fat: z.coerce.number().min(0).max(100),
+  fiber: z.coerce.number().min(0).max(100)
+});
+
+const customFoodSchema = z.object({
+  name: z.string().trim().min(1).max(40),
+  emoji: z.string().trim().max(8).optional(),
+  category: z.enum(CATEGORIES as [FoodCategory, ...FoodCategory[]]).optional(),
+  per100g: customNutritionSchema,
+  portions: portionsSchema
+});
+
+const aliasSchema = z.object({
+  alias: z.string().trim().min(1).max(40),
+  foodId: z.string().max(80).nullable().optional(),
+  name: z.string().trim().min(1).max(40),
+  emoji: z.string().trim().max(8).optional(),
+  category: z.enum(CATEGORIES as [FoodCategory, ...FoodCategory[]]).optional(),
+  per100g: customNutritionSchema,
+  portionHint: z.string().trim().max(30).optional()
+});
+
+const CUSTOM_FOOD_ID = /^custom_[0-9a-f-]{36}$/i;
+
 function isValidDateKey(value: string): boolean {
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return false;
@@ -173,7 +214,7 @@ const IDENTITY_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
 /**
  * 支持两种身份：
  * 1. Authorization: Bearer <session token>（微信登录后签发）
- * 2. x-device-id（Web/PWA 与未配置微信登录时的匿名设备）
+ * 2. x-device-id（未配置微信登录时的匿名设备模式）
  */
 function getDeviceId(req: Request, config: AppConfig): string {
   const authorization = req.header("authorization") ?? "";
@@ -222,6 +263,30 @@ function toMealItemInput(item: FoodItem): MealItemInput {
     confidence: item.confidence,
     portionHint: item.portionHint,
     per100g: item.per100g
+  };
+}
+
+function customFoodCatalog(food: CustomFood, name = food.name): FoodCatalogItem {
+  return {
+    id: food.id,
+    name,
+    emoji: food.emoji,
+    category: food.category,
+    per100g: food.per100g,
+    portions: food.portions,
+    source: "custom"
+  };
+}
+
+function builtinFoodCatalog(food: FoodRecord): FoodCatalogItem {
+  return {
+    id: food.id,
+    name: food.name,
+    emoji: food.emoji,
+    category: food.category,
+    per100g: food.per100g,
+    portions: food.portions,
+    source: "builtin"
   };
 }
 
@@ -572,11 +637,128 @@ export function createApp({ config, store }: CreateAppOptions) {
   );
 
   app.get(
+    "/api/custom-foods",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      res.json({ foods: store.listCustomFoods(deviceId) });
+    })
+  );
+
+  app.post(
+    "/api/custom-foods",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const parsed = customFoodSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new AppError(
+          400,
+          "自定义食物信息不完整",
+          "INVALID_CUSTOM_FOOD",
+          parsed.error.issues
+        );
+      }
+      if (store.findCustomFoodByName(deviceId, parsed.data.name)) {
+        throw new AppError(409, "已经有同名食物了", "CUSTOM_FOOD_EXISTS");
+      }
+      const food = store.createCustomFood(deviceId, {
+        name: parsed.data.name,
+        emoji: parsed.data.emoji || "🍽️",
+        category: parsed.data.category ?? "other",
+        per100g: parsed.data.per100g,
+        portions: parsed.data.portions ?? []
+      });
+      res.status(201).json({ food });
+    })
+  );
+
+  app.put(
+    "/api/custom-foods/:id",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const id = String(req.params.id ?? "");
+      if (!CUSTOM_FOOD_ID.test(id)) {
+        throw new AppError(400, "自定义食物标识不合法", "INVALID_ID");
+      }
+      if (!store.getCustomFood(deviceId, id)) {
+        throw new AppError(404, "没有找到这个自定义食物", "CUSTOM_FOOD_NOT_FOUND");
+      }
+      const parsed = customFoodSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new AppError(
+          400,
+          "自定义食物信息不完整",
+          "INVALID_CUSTOM_FOOD",
+          parsed.error.issues
+        );
+      }
+      const sameName = store.findCustomFoodByName(deviceId, parsed.data.name);
+      if (sameName && sameName.id !== id) {
+        throw new AppError(409, "已经有同名食物了", "CUSTOM_FOOD_EXISTS");
+      }
+      const food = store.updateCustomFood(deviceId, id, {
+        name: parsed.data.name,
+        emoji: parsed.data.emoji || "🍽️",
+        category: parsed.data.category ?? "other",
+        per100g: parsed.data.per100g,
+        portions: parsed.data.portions ?? []
+      });
+      if (!food) throw new AppError(404, "没有找到这个自定义食物", "CUSTOM_FOOD_NOT_FOUND");
+      res.json({ food });
+    })
+  );
+
+  app.delete(
+    "/api/custom-foods/:id",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const id = String(req.params.id ?? "");
+      if (!CUSTOM_FOOD_ID.test(id)) {
+        throw new AppError(400, "自定义食物标识不合法", "INVALID_ID");
+      }
+      if (!store.deleteCustomFood(deviceId, id)) {
+        throw new AppError(404, "没有找到这个自定义食物", "CUSTOM_FOOD_NOT_FOUND");
+      }
+      res.status(204).end();
+    })
+  );
+
+  app.post(
+    "/api/aliases",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const parsed = aliasSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new AppError(400, "别名参数不完整", "INVALID_ALIAS", parsed.error.issues);
+      }
+      const alias = normalizeAlias(parsed.data.alias);
+      if (!alias) throw new AppError(400, "别名不能为空", "INVALID_ALIAS");
+      const saved = store.upsertAlias(deviceId, {
+        alias,
+        foodId: parsed.data.foodId ?? null,
+        name: parsed.data.name,
+        emoji: parsed.data.emoji || "🍽️",
+        category: parsed.data.category ?? "other",
+        per100g: parsed.data.per100g,
+        portionHint: parsed.data.portionHint || ""
+      });
+      res.status(201).json({ alias: saved });
+    })
+  );
+
+  app.get(
     "/api/foods",
     asyncRoute(async (req, res) => {
       const deviceId = getDeviceId(req, config);
       if (req.query.recent === "1") {
         const recent = store.listRecentFoods(deviceId, 20).map((entry) => {
+          const custom = entry.foodId
+            ? store.getCustomFood(deviceId, entry.foodId)
+            : null;
+          if (custom) {
+            // 保留用户上次看到的菜名，营养值仍用自定义食物。
+            return customFoodCatalog(custom, entry.name || custom.name);
+          }
+
           const food = entry.foodId ? FOOD_BY_ID.get(entry.foodId) : null;
           if (food) {
             return {
@@ -586,7 +768,8 @@ export function createApp({ config, store }: CreateAppOptions) {
               emoji: food.emoji,
               category: food.category,
               per100g: food.per100g,
-              portions: food.portions
+              portions: food.portions,
+              source: "builtin"
             };
           }
           return {
@@ -603,15 +786,17 @@ export function createApp({ config, store }: CreateAppOptions) {
       }
 
       const query = typeof req.query.q === "string" ? req.query.q.slice(0, 30) : "";
-      const foods = searchFoods(query).map((food) => ({
-        id: food.id,
-        name: food.name,
-        emoji: food.emoji,
-        category: food.category,
-        per100g: food.per100g,
-        portions: food.portions
-      }));
-      res.json({ foods });
+      const normalized = query.trim().toLowerCase();
+      const customFoods = store
+        .listCustomFoods(deviceId, 100)
+        .filter((food) => !normalized || food.name.toLowerCase().includes(normalized))
+        .slice(0, 8)
+        .map((food) => customFoodCatalog(food));
+      const customNames = new Set(customFoods.map((food) => food.name.trim().toLowerCase()));
+      const builtIn = searchFoods(query)
+        .filter((food) => !customNames.has(food.name.trim().toLowerCase()))
+        .map(builtinFoodCatalog);
+      res.json({ foods: [...customFoods, ...builtIn].slice(0, 24) });
     })
   );
 
@@ -883,7 +1068,7 @@ export function createApp({ config, store }: CreateAppOptions) {
           provider: recognition.provider,
           engine: recognition.engine,
           notice: recognition.notice,
-          items: recognition.items
+          items: applyAliases(recognition.items, store.listAliases(deviceId))
         },
         profile.targets
       );

@@ -139,6 +139,7 @@ flowchart LR
 │  ├─ data/demo.ts               # 演示餐盘
 │  ├─ services/vision.ts         # 视觉模型适配
 │  ├─ services/items.ts          # 结果归一化、合并、求和
+│  ├─ services/aliases.ts        # 用户别名归一化与识别前应用
 │  ├─ services/analysis.ts       # 评分与建议组装
 │  ├─ lib/image.ts               # 图片魔数、保存
 │  ├─ lib/session.ts             # HMAC 会话
@@ -148,7 +149,8 @@ flowchart LR
 │  ├─ types.ts
 │  ├─ nutrition.ts
 │  ├─ advice.ts
-│  └─ body.ts
+│  ├─ body.ts
+│  └─ weight.ts                  # 自然周聚合与体重变化
 │
 ├─ public/images/demo-bowl.jpg   # 演示模式使用；由 Express 提供
 ├─ scripts/check-miniprogram.mjs # 小程序静态检查
@@ -184,8 +186,8 @@ ready()              等待微信登录 / 设备 ID 初始化
 | 页面 | 职责 |
 | --- | --- |
 | `home` | 今日汇总、拍照/相册、一键再吃、最近记录 |
-| `review` | 识别结果、克数编辑、剩饭比例、份量参照、保存 |
-| `food-search` | 搜索食物库、最近吃过、把食物加回 review |
+| `review` | 识别结果、克数编辑、剩饭比例、份量参照、换一种、低置信度提示、保存 |
+| `food-search` | 搜索内置库 + 我的食物、最近吃过、自定义食物 CRUD、加回/替换 review |
 | `journal` | 按天查看、删除、再来一份、存为常用餐 |
 | `goals` | 昵称、目标、身体数据、自动/手动目标、体重入口 |
 | `weight` | 记录/修正体重、12 周折线、周平均、删除记录 |
@@ -226,6 +228,12 @@ applyRatio(items, r)  用 baseGrams × r 折算整盘
 setGrams(item, g, r)  手动改克数时反推 baseGrams = g / r
 ```
 
+review 页面保存 `baseGrams`（100% 基准）与当前 `grams`，因此：
+
+- 选 50% 后总热量减半；
+- 再单独改某一项，不会把比例重复乘一次；
+- 来回切换 75% / 50% / 100% 不会漂移。
+
 ### 5.6 体重趋势
 
 - `pages/weight/index` 用 Canvas 2D 画最近 12 个自然周的平均体重，不引入图表库；
@@ -233,11 +241,15 @@ setGrams(item, g, r)  手动改克数时反推 baseGrams = g / r
 - 页面只做展示与录入，周平均、28 天变化全部由服务端 `shared/weight.ts` 计算；
 - 首页和目标页各有一个轻量入口，首页入口加载失败时静默隐藏，不影响主流程。
 
-review 页面保存 `baseGrams`（100% 基准）与当前 `grams`，因此：
+### 5.7 识别纠错、自定义食物与别名
 
-- 选 50% 后总热量减半；
-- 再单独改某一项，不会把比例重复乘一次；
-- 来回切换 75% / 50% / 100% 不会漂移。
+- `review` 的每个识别项都有「换一种」，进入 `food-search` 的 replace 模式；
+- 替换只改名称、`foodId`、每 100g 营养和份量提示，保留用户已经调好的克数；
+- 置信度低于 0.6 的项标红，并在顶部汇总提示，不强制弹窗；
+- `food-search` 同时承担“加食物”和“换食物”，并内嵌自定义食物表单；
+- 自定义食物在服务端按 `(device_id, name)` 唯一，搜索时排在前面；
+- 替换时把原叫法写入 `food_aliases`，下次识别在 `assembleAnalysis` 之前应用；
+- 别名和应用逻辑都在服务端，客户端只负责发起替换。
 
 ---
 
@@ -275,9 +287,9 @@ store.ts                   SQLite，唯一数据访问入口
 - `PRAGMA foreign_keys = ON`；
 - `insertMeal` 使用 `BEGIN IMMEDIATE / COMMIT / ROLLBACK` 保证 meal 与 items 原子性；
 - 所有 SQL 使用 prepared statement 参数绑定；
-- 索引：`meals(device_id, date, eaten_at)`、`meal_items(meal_id, order_index)`、`meal_templates(device_id, last_used_at)`、`weight_logs(device_id, date)`。
+- 索引：`meals(device_id, date, eaten_at)`、`meal_items(meal_id, order_index)`、`meal_templates(device_id, last_used_at)`、`weight_logs(device_id, date)`、`custom_foods(device_id, updated_at)`、`food_aliases(device_id, updated_at)`。
 
-旧数据库通过 `addColumnIfMissing` 逐列迁移；`meal_templates` 与 `weight_logs` 用 `CREATE TABLE IF NOT EXISTS` 增量创建。`weight_logs` 对 `(device_id, date)` 建唯一约束，保证一天只有一条。
+旧数据库通过 `addColumnIfMissing` 逐列迁移；`meal_templates`、`weight_logs`、`custom_foods`、`food_aliases` 用 `CREATE TABLE IF NOT EXISTS` 增量创建。`weight_logs` 对 `(device_id, date)` 建唯一约束，保证一天只有一条；`custom_foods` 对 `(device_id, name)` 唯一，避免同名重复。
 
 ### 6.3 静态资源
 
@@ -373,7 +385,37 @@ sequenceDiagram
 - 回填旧日期时，档案仍然取“日期最新”的一条，而不是最后提交的一条；
 - 删除最新一条后，档案回退到剩余记录中最新的一条；删空时保留当前档案体重，不强行清空。
 
-### 7.4 失败与降级矩阵
+### 7.4 识别纠错 → 别名
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 用户
+  participant W as 小程序
+  participant A as Express
+  participant D as SQLite
+  participant V as 视觉模型
+
+  U->>W: 点某一项的「换一种」
+  W->>A: GET /api/foods?q=
+  U->>W: 选择内置/自定义食物
+  W->>W: 替换名称、per100g、份量，保留 grams
+  W->>A: POST /api/aliases（原叫法 → 新食物快照）
+  A->>D: upsert food_aliases(device_id, alias)
+  Note over U,V: 下一次识别
+  A->>D: listAliases(device_id)
+  V-->>A: 模型识别 items
+  A->>A: applyAliases(items, aliases)
+  A->>A: assembleAnalysis → 保存时重算营养
+  A-->>W: 已按用户确认过的食物返回
+```
+
+- 别名只是快照，不依赖自定义食物仍然存在；
+- 别名只在真实识别 `/api/analyze` 前应用，示例餐盘保持固定内容；
+- 别名不改变份量，克数仍由用户确认；
+- 别名命中时把置信度至少提升到 0.9，避免再次被低置信度提示打断。
+
+### 7.5 失败与降级矩阵
 
 | 情况 | 行为 | 用户看到 |
 | --- | --- | --- |
@@ -613,6 +655,30 @@ erDiagram
     TEXT created_at
     TEXT updated_at
   }
+
+  CUSTOM_FOODS {
+    TEXT id PK
+    TEXT device_id FK
+    TEXT name
+    TEXT emoji
+    TEXT category
+    TEXT per100g_json
+    TEXT portions_json
+    TEXT created_at
+    TEXT updated_at
+  }
+
+  FOOD_ALIASES {
+    TEXT device_id FK
+    TEXT alias
+    TEXT food_id
+    TEXT name
+    TEXT emoji
+    TEXT category
+    TEXT per100g_json
+    TEXT portion_hint
+    TEXT updated_at
+  }
 ```
 
 设计说明：
@@ -621,8 +687,10 @@ erDiagram
 - `meals` 存汇总值，避免日记列表每次重新求和；`meal_items` 存明细与 `per100g_json` 快照。
 - `meal_templates` 存 `items_json` 快照和汇总值；一键记录时仍走 `makeFoodItem` 重新计算。
 - `weight_logs` 一天一条（`UNIQUE(device_id, date)`），是体重的唯一事实来源；`profiles.weight_kg` 只是最新记录的快照，用于 BMR/TDEE 和目标计算。
+- `custom_foods` 存用户自己的食物（每 100g 营养 + 份量），`(device_id, name)` 唯一；搜索时排在内置库前面。
+- `food_aliases` 存“识别叫法 → 食物快照”，主键 `(device_id, alias)`；只影响当前身份，最多 200 条，超出淘汰最久未更新。
 - `date` 是查询键（YYYY-MM-DD），`eaten_at` 是完整时间；服务端默认使用上海时区。
-- `source` 区分 `database` / `ai`；`engine` 记录模型名或「演示引擎」。
+- `source` 区分 `database` / `custom` / `ai`；`engine` 记录模型名或「演示引擎」。
 
 ---
 
@@ -641,6 +709,11 @@ POST   /api/weights
 DELETE /api/weights/:id
 GET    /api/foods?q=
 GET    /api/foods?recent=1
+GET    /api/custom-foods
+POST   /api/custom-foods
+PUT    /api/custom-foods/:id
+DELETE /api/custom-foods/:id
+POST   /api/aliases
 POST   /api/analyze          multipart/form-data, field=image
 POST   /api/analyze/demo     内置示例餐盘
 GET    /api/day?date=YYYY-MM-DD
@@ -714,7 +787,9 @@ npm run check     以上三项
 - 体重按自然周聚合、28 天变化与 API 同步；
 - 视觉模型 JSON 解析；
 - 会话签名、篡改、过期；
-- 完整 API 流程：识别 → 保存 → 模板 → 复制 → 删除 → 体重；
+- 完整 API 流程：识别 → 保存 → 模板 → 复制 → 删除 → 体重 → 自定义食物 → 别名；
+- 自定义食物 CRUD、搜索优先级、保存时 `source: custom`；
+- 别名只作用于当前身份，并在识别前替换；
 - 小程序与服务端营养/身体计算 parity；
 - 小程序份量参照与剩饭比例；
 - 页面/组件脚本在微信运行时外壳下可加载。
@@ -774,8 +849,8 @@ docker run --rm -p 8787:8787 \
 ### 16.3 识别质量
 
 - 积累“用户实际克数 vs 模型克数”的评测集；
-- 对低置信度条目主动提示确认；
-- 支持自定义食物与别名，逐步建立个人食物库。
+- 别名冲突时提供“换回模型原结果”的入口；
+- 自定义食物支持批量导入、分享给家人。
 
 ### 16.4 体验
 

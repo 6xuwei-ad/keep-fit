@@ -97,6 +97,11 @@ export interface Profile extends BodyProfile {
   updatedAt: string;
 }
 
+export interface FoodPortion {
+  label: string;
+  grams: number;
+}
+
 export interface FoodItem {
   id: string;
   foodId: string | null;
@@ -108,7 +113,7 @@ export interface FoodItem {
   portionHint: string;
   per100g: NutritionFacts;
   nutrition: NutritionFacts;
-  source: "database" | "ai";
+  source: "database" | "ai" | "custom";
 }
 
 export type AdviceKind =
@@ -157,13 +162,25 @@ export interface MealItemInput {
   per100g: NutritionFacts;
 }
 
+export interface CustomFood {
+  id: string;
+  name: string;
+  emoji: string;
+  category: FoodCategory;
+  per100g: NutritionFacts;
+  portions: FoodPortion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FoodCatalogItem {
   id: string;
   name: string;
   emoji: string;
   category: FoodCategory;
   per100g: NutritionFacts;
-  portions: Array<{ label: string; grams: number }>;
+  portions: FoodPortion[];
+  source?: "builtin" | "custom";
 }
 
 export interface AnalyzeResponse {

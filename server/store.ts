@@ -6,6 +6,7 @@ import type {
   ActivityLevel,
   BodyProfile,
   CreateMealInput,
+  CustomFood,
   FoodCategory,
   FoodItem,
   Goal,
@@ -104,6 +105,41 @@ interface WeightRow {
   updated_at: string;
 }
 
+interface CustomFoodRow {
+  id: string;
+  device_id: string;
+  name: string;
+  emoji: string;
+  category: string;
+  per100g_json: string;
+  portions_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AliasRow {
+  device_id: string;
+  alias: string;
+  food_id: string | null;
+  name: string;
+  emoji: string;
+  category: string;
+  per100g_json: string;
+  portion_hint: string;
+  updated_at: string;
+}
+
+/** 用户确认过的叫法 → 食物快照，用于下次识别时优先匹配。 */
+export interface FoodAlias {
+  alias: string;
+  foodId: string | null;
+  name: string;
+  emoji: string;
+  category: FoodCategory;
+  per100g: NutritionFacts;
+  portionHint: string;
+}
+
 export interface RecentFoodRecord {
   foodId: string | null;
   name: string;
@@ -181,7 +217,8 @@ function mapItem(row: ItemRow): FoodItem {
       fat: row.fat,
       fiber: row.fiber
     },
-    source: row.source === "database" ? "database" : "ai"
+    source:
+      row.source === "database" ? "database" : row.source === "custom" ? "custom" : "ai"
   };
 }
 
@@ -192,6 +229,31 @@ function mapWeight(row: WeightRow): WeightLog {
     weightKg: row.weight_kg,
     createdAt: row.created_at,
     updatedAt: row.updated_at
+  };
+}
+
+function mapCustomFood(row: CustomFoodRow): CustomFood {
+  return {
+    id: row.id,
+    name: row.name,
+    emoji: row.emoji,
+    category: row.category as FoodCategory,
+    per100g: JSON.parse(row.per100g_json) as NutritionFacts,
+    portions: JSON.parse(row.portions_json) as CustomFood["portions"],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapAlias(row: AliasRow): FoodAlias {
+  return {
+    alias: row.alias,
+    foodId: row.food_id,
+    name: row.name,
+    emoji: row.emoji,
+    category: row.category as FoodCategory,
+    per100g: JSON.parse(row.per100g_json) as NutritionFacts,
+    portionHint: row.portion_hint
   };
 }
 
@@ -318,11 +380,41 @@ export class Store {
         UNIQUE (device_id, date)
       );
 
+      CREATE TABLE IF NOT EXISTS custom_foods (
+        id TEXT PRIMARY KEY,
+        device_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        emoji TEXT NOT NULL,
+        category TEXT NOT NULL,
+        per100g_json TEXT NOT NULL,
+        portions_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE,
+        UNIQUE (device_id, name)
+      );
+
+      CREATE TABLE IF NOT EXISTS food_aliases (
+        device_id TEXT NOT NULL,
+        alias TEXT NOT NULL,
+        food_id TEXT,
+        name TEXT NOT NULL,
+        emoji TEXT NOT NULL,
+        category TEXT NOT NULL,
+        per100g_json TEXT NOT NULL,
+        portion_hint TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (device_id, alias),
+        FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE
+      );
+
       CREATE INDEX IF NOT EXISTS idx_meals_device_date ON meals(device_id, date, eaten_at);
       CREATE INDEX IF NOT EXISTS idx_items_meal ON meal_items(meal_id, order_index);
       CREATE INDEX IF NOT EXISTS idx_items_food ON meal_items(food_id);
       CREATE INDEX IF NOT EXISTS idx_templates_device ON meal_templates(device_id, last_used_at);
       CREATE INDEX IF NOT EXISTS idx_weights_device_date ON weight_logs(device_id, date);
+      CREATE INDEX IF NOT EXISTS idx_custom_foods_device ON custom_foods(device_id, updated_at);
+      CREATE INDEX IF NOT EXISTS idx_aliases_device ON food_aliases(device_id, updated_at);
     `);
 
     // 老版本数据库没有身体数据字段，逐列补齐，保留已有目标值。
@@ -799,6 +891,196 @@ export class Store {
       per100g: JSON.parse(row.per100g_json) as NutritionFacts,
       lastEatenAt: row.last_eaten
     }));
+  }
+
+  listCustomFoods(deviceId: string, limit = 100): CustomFood[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM custom_foods WHERE device_id = ?
+         ORDER BY updated_at DESC, name ASC LIMIT ?`
+      )
+      .all(deviceId, limit) as unknown as CustomFoodRow[];
+    return rows.map(mapCustomFood);
+  }
+
+  getCustomFood(deviceId: string, id: string): CustomFood | null {
+    const row = this.db
+      .prepare("SELECT * FROM custom_foods WHERE device_id = ? AND id = ?")
+      .get(deviceId, id) as CustomFoodRow | undefined;
+    return row ? mapCustomFood(row) : null;
+  }
+
+  findCustomFoodByName(deviceId: string, name: string): CustomFood | null {
+    const row = this.db
+      .prepare("SELECT * FROM custom_foods WHERE device_id = ? AND name = ?")
+      .get(deviceId, name) as CustomFoodRow | undefined;
+    return row ? mapCustomFood(row) : null;
+  }
+
+  createCustomFood(
+    deviceId: string,
+    input: {
+      name: string;
+      emoji: string;
+      category: FoodCategory;
+      per100g: NutritionFacts;
+      portions: CustomFood["portions"];
+    }
+  ): CustomFood {
+    this.ensureProfile(deviceId);
+    const id = `custom_${randomUUID()}`;
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `INSERT INTO custom_foods
+          (id, device_id, name, emoji, category, per100g_json, portions_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        id,
+        deviceId,
+        input.name,
+        input.emoji,
+        input.category,
+        JSON.stringify(input.per100g),
+        JSON.stringify(input.portions),
+        now,
+        now
+      );
+    return this.getCustomFood(deviceId, id)!;
+  }
+
+  updateCustomFood(
+    deviceId: string,
+    id: string,
+    input: {
+      name: string;
+      emoji: string;
+      category: FoodCategory;
+      per100g: NutritionFacts;
+      portions: CustomFood["portions"];
+    }
+  ): CustomFood | null {
+    const result = this.db
+      .prepare(
+        `UPDATE custom_foods
+         SET name = ?, emoji = ?, category = ?, per100g_json = ?, portions_json = ?,
+             updated_at = ?
+         WHERE device_id = ? AND id = ?`
+      )
+      .run(
+        input.name,
+        input.emoji,
+        input.category,
+        JSON.stringify(input.per100g),
+        JSON.stringify(input.portions),
+        new Date().toISOString(),
+        deviceId,
+        id
+      );
+    if (Number(result.changes) === 0) return null;
+
+    // 改自定义食物时，把指向它的别名快照一起刷新。
+    const firstPortion = input.portions[0];
+    this.db
+      .prepare(
+        `UPDATE food_aliases
+         SET name = ?, emoji = ?, category = ?, per100g_json = ?, portion_hint = ?,
+             updated_at = ?
+         WHERE device_id = ? AND food_id = ?`
+      )
+      .run(
+        input.name,
+        input.emoji,
+        input.category,
+        JSON.stringify(input.per100g),
+        firstPortion ? `${firstPortion.label} · ${firstPortion.grams}g` : "",
+        new Date().toISOString(),
+        deviceId,
+        id
+      );
+
+    return this.getCustomFood(deviceId, id);
+  }
+
+  deleteCustomFood(deviceId: string, id: string): boolean {
+    const result = this.db
+      .prepare("DELETE FROM custom_foods WHERE device_id = ? AND id = ?")
+      .run(deviceId, id);
+    return Number(result.changes) > 0;
+  }
+
+  listAliases(deviceId: string, limit = 200): FoodAlias[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM food_aliases WHERE device_id = ?
+         ORDER BY updated_at DESC LIMIT ?`
+      )
+      .all(deviceId, limit) as unknown as AliasRow[];
+    return rows.map(mapAlias);
+  }
+
+  upsertAlias(deviceId: string, input: FoodAlias): FoodAlias {
+    this.ensureProfile(deviceId);
+    const alias = input.alias
+      .trim()
+      .toLowerCase()
+      .replace(/[（(].*?[）)]/g, "")
+      .replace(/[\s·•\-—_/]/g, "")
+      .replace(/[，,。.]/g, "");
+    const now = new Date().toISOString();
+    const existing = this.db
+      .prepare("SELECT 1 FROM food_aliases WHERE device_id = ? AND alias = ?")
+      .get(deviceId, alias);
+    if (!existing) {
+      const row = this.db
+        .prepare("SELECT COUNT(*) AS count FROM food_aliases WHERE device_id = ?")
+        .get(deviceId) as { count: number } | undefined;
+      if (Number(row?.count ?? 0) >= 200) {
+        const stale = this.db
+          .prepare(
+            `SELECT alias FROM food_aliases WHERE device_id = ?
+             ORDER BY updated_at ASC LIMIT ?`
+          )
+          .all(deviceId, Number(row?.count ?? 0) - 199) as unknown as Array<{
+          alias: string;
+        }>;
+        const remove = this.db.prepare(
+          "DELETE FROM food_aliases WHERE device_id = ? AND alias = ?"
+        );
+        for (const entry of stale) remove.run(deviceId, entry.alias);
+      }
+    }
+
+    this.db
+      .prepare(
+        `INSERT INTO food_aliases
+          (device_id, alias, food_id, name, emoji, category, per100g_json, portion_hint, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(device_id, alias) DO UPDATE SET
+           food_id = excluded.food_id,
+           name = excluded.name,
+           emoji = excluded.emoji,
+           category = excluded.category,
+           per100g_json = excluded.per100g_json,
+           portion_hint = excluded.portion_hint,
+           updated_at = excluded.updated_at`
+      )
+      .run(
+        deviceId,
+        alias,
+        input.foodId,
+        input.name,
+        input.emoji,
+        input.category,
+        JSON.stringify(input.per100g),
+        input.portionHint,
+        now
+      );
+    return {
+      ...input,
+      alias
+    };
   }
 
   close(): void {

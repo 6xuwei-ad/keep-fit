@@ -8,6 +8,7 @@ import type { AddressInfo } from "node:net";
 import { localDateKey, shiftDateKey } from "../../shared/nutrition.ts";
 import type {
   AnalysisResult,
+  CustomFood,
   DayResponse,
   Meal,
   MealTemplate,
@@ -246,6 +247,148 @@ test("识别、保存、汇总、删除的完整 API 流程", async (t) => {
     foods: Array<{ id: string; name: string }>;
   };
   assert.ok(recentBody.foods.some((food) => food.id === "silken-tofu"));
+
+  const customPayload = {
+    name: "自制香煎豆腐",
+    emoji: "🍳",
+    category: "protein",
+    per100g: { kcal: 200, protein: 12, carbs: 8, fat: 14, fiber: 1 },
+    portions: [{ label: "一小碟", grams: 80 }]
+  };
+  const customCreated = await fetch(`${base}/api/custom-foods`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify(customPayload)
+  });
+  assert.equal(customCreated.status, 201);
+  const customBody = (await customCreated.json()) as { food: CustomFood };
+  const customFood = customBody.food;
+  assert.ok(customFood.id.startsWith("custom_"));
+  assert.equal(customFood.portions[0]!.grams, 80);
+
+  const customDuplicate = await fetch(`${base}/api/custom-foods`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify(customPayload)
+  });
+  assert.equal(customDuplicate.status, 409);
+  assert.equal(
+    ((await customDuplicate.json()) as { code: string }).code,
+    "CUSTOM_FOOD_EXISTS"
+  );
+
+  const customSearch = await get("/api/foods?q=香煎");
+  const customSearchBody = (await customSearch.json()) as {
+    foods: Array<{ id: string; name: string; source?: string }>;
+  };
+  assert.equal(customSearchBody.foods[0]!.id, customFood.id);
+  assert.equal(customSearchBody.foods[0]!.source, "custom");
+  assert.ok(!customSearchBody.foods.some((food) => food.name === "香煎豆腐"));
+
+  const foreignCustom = await fetch(`${base}/api/custom-foods`, {
+    headers: { "x-device-id": "test-device-0002" }
+  });
+  const foreignCustomBody = (await foreignCustom.json()) as { foods: CustomFood[] };
+  assert.equal(foreignCustomBody.foods.length, 0);
+
+  const customMeal = await fetch(`${base}/api/meals`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "自定义食物测试",
+      mealType: "snack",
+      date: "2026-10-29",
+      eatenAt: "2026-10-29T15:00:00+08:00",
+      imageUrl: null,
+      engine: "自定义",
+      items: [
+        {
+          foodId: customFood.id,
+          name: customFood.name,
+          emoji: customFood.emoji,
+          category: customFood.category,
+          grams: 100,
+          per100g: customFood.per100g
+        }
+      ]
+    })
+  });
+  assert.equal(customMeal.status, 201);
+  const customMealBody = (await customMeal.json()) as { meal: Meal };
+  assert.equal(customMealBody.meal.items[0]!.source, "custom");
+  assert.equal(customMealBody.meal.items[0]!.foodId, customFood.id);
+  assert.equal(customMealBody.meal.totals.kcal, 200);
+  const customRecent = await get("/api/foods?recent=1");
+  const customRecentBody = (await customRecent.json()) as {
+    foods: Array<{ id: string; name: string; source?: string }>;
+  };
+  assert.ok(
+    customRecentBody.foods.some(
+      (food) => food.id === customFood.id && food.source === "custom"
+    )
+  );
+  await fetch(`${base}/api/meals/${customMealBody.meal.id}`, {
+    method: "DELETE",
+    headers: { "x-device-id": DEVICE }
+  });
+
+  const aliasCreated = await fetch(`${base}/api/aliases`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      alias: "香煎豆腐",
+      foodId: customFood.id,
+      name: customFood.name,
+      emoji: customFood.emoji,
+      category: customFood.category,
+      per100g: customFood.per100g,
+      portionHint: "一小碟 · 80g"
+    })
+  });
+  assert.equal(aliasCreated.status, 201);
+
+  const customUpdated = await fetch(`${base}/api/custom-foods/${customFood.id}`, {
+    method: "PUT",
+    headers: { "x-device-id": DEVICE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...customPayload,
+      per100g: { kcal: 210, protein: 13, carbs: 8, fat: 14, fiber: 1 }
+    })
+  });
+  assert.equal(customUpdated.status, 200);
+
+  // 真实识别路径会先应用别名；示例餐盘保持固定内容。
+  const aliasForm = new FormData();
+  aliasForm.append("image", new Blob([image], { type: "image/jpeg" }), "demo-bowl.jpg");
+  const aliasedAnalysis = await fetch(`${base}/api/analyze`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE },
+    body: aliasForm
+  });
+  assert.equal(aliasedAnalysis.status, 201);
+  const aliasedAnalysisBody = (await aliasedAnalysis.json()) as { analysis: AnalysisResult };
+  const aliasedItem = aliasedAnalysisBody.analysis.items[0]!;
+  assert.equal(aliasedItem.name, customFood.name);
+  assert.equal(aliasedItem.foodId, customFood.id);
+  assert.equal(aliasedItem.source, "custom");
+  assert.equal(aliasedItem.per100g.kcal, 210);
+
+  const foreignDemo = await fetch(`${base}/api/analyze/demo`, {
+    method: "POST",
+    headers: { "x-device-id": "test-device-0002", "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  const foreignDemoBody = (await foreignDemo.json()) as { analysis: AnalysisResult };
+  assert.equal(foreignDemoBody.analysis.items[0]!.name, "香煎豆腐");
+
+  const customDeleted = await fetch(`${base}/api/custom-foods/${customFood.id}`, {
+    method: "DELETE",
+    headers: { "x-device-id": DEVICE }
+  });
+  assert.equal(customDeleted.status, 204);
+  const customAfterDelete = await get("/api/custom-foods");
+  const customAfterDeleteBody = (await customAfterDelete.json()) as { foods: CustomFood[] };
+  assert.equal(customAfterDeleteBody.foods.length, 0);
 
   const repeatAfterLog = await get("/api/repeat");
   const repeatAfterLogBody = (await repeatAfterLog.json()) as RepeatResponse;

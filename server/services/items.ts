@@ -9,6 +9,8 @@ export interface RawVisionItem {
   category: FoodCategory;
   per100g?: NutritionFacts;
   portionHint?: string;
+  foodId?: string | null;
+  emoji?: string;
 }
 
 const CATEGORY_FALLBACK: FoodCategory = "other";
@@ -69,6 +71,7 @@ export function makeFoodItem(input: {
   per100g?: NutritionFacts;
   portionHint?: string;
   foodId?: string | null;
+  emoji?: string;
 }): {
   id: string;
   foodId: string | null;
@@ -80,11 +83,32 @@ export function makeFoodItem(input: {
   portionHint: string;
   per100g: NutritionFacts;
   nutrition: NutritionFacts;
-  source: "database" | "ai";
+  source: "database" | "ai" | "custom";
 } {
+  const grams = Math.round(clamp(Number(input.grams) || 0, 1, 3000));
+  const customId =
+    input.foodId && input.foodId.startsWith("custom_") ? input.foodId : null;
+  const customPer100g = customId ? validPer100g(input.per100g) : null;
+
+  // 自定义食物不在内置库里，保留 foodId 与用户填写的营养值。
+  if (customId && customPer100g) {
+    return {
+      id: crypto.randomUUID(),
+      foodId: customId,
+      name: input.name.trim().slice(0, 40) || "自定义食物",
+      emoji: input.emoji?.trim().slice(0, 8) || "🍽️",
+      category: safeCategory(input.category),
+      grams,
+      confidence: clamp(Number(input.confidence) || 0.7, 0.1, 1),
+      portionHint: input.portionHint?.trim().slice(0, 30) || "手动添加",
+      per100g: customPer100g,
+      nutrition: scaleNutrition(customPer100g, grams),
+      source: "custom"
+    };
+  }
+
   const byId = input.foodId ? FOOD_BY_ID.get(input.foodId) ?? null : null;
   const food = byId ?? resolveFood(input.name);
-  const grams = Math.round(clamp(Number(input.grams) || 0, 1, 3000));
   const { value: per100g, source } = pickPer100g(food, input.per100g);
   const category = food?.category ?? safeCategory(input.category);
 
@@ -92,7 +116,7 @@ export function makeFoodItem(input: {
     id: crypto.randomUUID(),
     foodId: food?.id ?? null,
     name: input.name.trim().slice(0, 40) || food?.name || "未知食物",
-    emoji: food?.emoji ?? "🍽️",
+    emoji: food?.emoji ?? (input.emoji?.trim().slice(0, 8) || "🍽️"),
     category,
     grams,
     confidence: clamp(Number(input.confidence) || 0.7, 0.1, 1),

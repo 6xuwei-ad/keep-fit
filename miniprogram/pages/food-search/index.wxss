@@ -2,6 +2,45 @@
   padding: 22rpx 28rpx 50rpx;
 }
 
+.replace-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid rgba(27, 75, 55, 0.14);
+  border-radius: 20rpx;
+  background: #eef7c8;
+}
+
+.replace-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.replace-label {
+  color: #70786f;
+  font-size: 15rpx;
+}
+
+.replace-name {
+  overflow: hidden;
+  margin-top: 2rpx;
+  color: #1b4b37;
+  font-size: 22rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replace-hint {
+  flex: none;
+  margin-left: 12rpx;
+  color: #5f735a;
+  font-size: 15rpx;
+}
+
 .search-box {
   display: flex;
   height: 90rpx;
@@ -43,6 +82,192 @@
   margin: 24rpx 4rpx 10rpx;
   color: #969c93;
   font-size: 17rpx;
+}
+
+.meta-right {
+  display: flex;
+  align-items: center;
+}
+
+.new-food-link {
+  margin-left: 16rpx;
+  color: #1b4b37;
+  font-size: 17rpx;
+  font-weight: 700;
+}
+
+.editor-card {
+  margin: 6rpx 0 18rpx;
+  padding: 24rpx 22rpx;
+}
+
+.editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.editor-close {
+  display: flex;
+  width: 44rpx;
+  height: 44rpx;
+  align-items: center;
+  justify-content: center;
+  color: #70786f;
+  border-radius: 50%;
+  background: #f3f1e8;
+  font-size: 26rpx;
+  line-height: 1;
+}
+
+.editor-hint {
+  margin-top: 10rpx;
+  color: #70786f;
+  font-size: 18rpx;
+  line-height: 1.6;
+}
+
+.form-row {
+  display: flex;
+  align-items: flex-end;
+  margin-top: 16rpx;
+}
+
+.form-field {
+  min-width: 0;
+  flex: 1;
+}
+
+.form-field + .form-field {
+  margin-left: 12rpx;
+}
+
+.form-field--emoji {
+  flex: none;
+  width: 130rpx;
+}
+
+.form-field--name {
+  flex: 1;
+}
+
+.form-field--grams {
+  flex: none;
+  width: 240rpx;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6rpx;
+  color: #8d948d;
+  font-size: 16rpx;
+  font-weight: 600;
+}
+
+.form-input {
+  width: 100%;
+  height: 68rpx;
+  padding: 0 14rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 14rpx;
+  background: #f8f5ea;
+  font-size: 22rpx;
+}
+
+.form-input--center {
+  text-align: center;
+}
+
+.picker-value {
+  display: flex;
+  height: 68rpx;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 14rpx;
+  background: #f8f5ea;
+  font-size: 22rpx;
+}
+
+.picker-chev {
+  color: #969c93;
+  font-size: 24rpx;
+}
+
+.form-section {
+  display: block;
+  margin-top: 18rpx;
+  margin-bottom: 8rpx;
+  color: #31473b;
+  font-size: 17rpx;
+  font-weight: 700;
+}
+
+.nutrition-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.nutrition-field {
+  width: 33.33%;
+  padding-right: 8rpx;
+  margin-top: 8rpx;
+}
+
+.nutrition-field:nth-child(3n) {
+  padding-right: 0;
+}
+
+.nutrition-input-wrap {
+  display: flex;
+  height: 64rpx;
+  align-items: center;
+  padding: 0 10rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 14rpx;
+  background: #f8f5ea;
+}
+
+.nutrition-input-wrap .form-input {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.nutrition-unit {
+  margin-left: 3rpx;
+  color: #969c93;
+  font-size: 14rpx;
+}
+
+.editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid rgba(21, 39, 31, 0.08);
+}
+
+.editor-actions-right {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: 12rpx;
+}
+
+.editor-actions-right .btn + .btn {
+  margin-left: 10rpx;
+}
+
+.editor-delete {
+  color: #a24f3c;
 }
 
 .state {
@@ -88,9 +313,36 @@
   margin-left: 16rpx;
 }
 
+.food-name-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
 .food-name {
+  overflow: hidden;
   font-size: 24rpx;
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mine-tag {
+  flex: none;
+  margin-left: 8rpx;
+  padding: 2rpx 8rpx;
+  color: #1b4b37;
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 13rpx;
+  font-weight: 700;
+}
+
+.edit-link {
+  flex: none;
+  margin-right: 10rpx;
+  color: #5f735a;
+  font-size: 17rpx;
 }
 
 .food-sub {
