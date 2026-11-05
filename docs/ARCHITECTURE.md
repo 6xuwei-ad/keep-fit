@@ -109,6 +109,7 @@ flowchart LR
 .
 ├─ miniprogram/                  # 微信原生小程序
 │  ├─ app.js / app.json / app.wxss
+│  ├─ custom-tab-bar/            # 悬浮液态玻璃底部导航
 │  ├─ components/
 │  │  ├─ progress-ring/
 │  │  ├─ macro-bar/
@@ -210,6 +211,8 @@ ready()              等待微信登录 / 设备 ID 初始化
 - 原生 CSS Design Tokens，定义在 `app.wxss` 的 `page` 变量；
 - 主色深绿 `#1B4B37`、背景米色 `#F3F1E8`、强调青柠 `#D9EF7C`；
 - 组件：`progress-ring`（Canvas 圆环）、`macro-bar`、`advice-card`；
+- 底部导航：`custom-tab-bar/` 悬浮胶囊，`backdrop-filter` 背景模糊 + 边缘高光 + 滑动选中块；不支持模糊的环境回落到半透明米白底；
+- tab 页底部预留 `214rpx + safe-area-inset-bottom`，避免内容被悬浮导航遮挡；
 - 统一 `card`、`btn`、`section-title`、`eyebrow` 等类，页面不重复造按钮。
 
 ### 5.4 图片压缩

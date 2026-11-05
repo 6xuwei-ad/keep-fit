@@ -101,6 +101,8 @@ Page({
   },
 
   onShow() {
+    const tabBar = this.getTabBar && this.getTabBar();
+    if (tabBar) tabBar.setData({ selected: 2 });
     // 有未保存修改时只同步体重，避免覆盖用户正在编辑的其他字段。
     if (!this._loaded) return;
     if (this._dirty) {

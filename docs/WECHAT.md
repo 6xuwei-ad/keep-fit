@@ -11,7 +11,7 @@
 | --- | --- |
 | 原生工程 | `project.config.json` + `miniprogramRoot: miniprogram/` |
 | 页面 | 今日、确认份量、食物搜索、日记、目标，共 5 页 |
-| tabBar | 3 个原生 tab + 6 张 81×81 图标 |
+| tabBar | 3 个自定义悬浮 tab + 6 张 81×81 图标 |
 | 拍照/相册 | `wx.chooseMedia`（旧基础库回退 `wx.chooseImage`） |
 | 上传识别 | `wx.uploadFile` → `POST /api/analyze` |
 | 克数实时重算 | `miniprogram/utils/nutrition.js`，同步服务端公式 |
@@ -156,8 +156,9 @@ SESSION_TTL_SECONDS=2592000
 ```text
 miniprogram/
 ├─ app.js                    # onLaunch: 设备 ID + 微信登录
-├─ app.json                  # 5 页面、原生 tabBar、全局组件
+├─ app.json                  # 6 页面、custom tabBar、全局组件
 ├─ app.wxss                  # 设计 tokens 与公共样式
+├─ custom-tab-bar/           # 悬浮液态玻璃底部导航
 ├─ config.js                 # API_BASE / USE_WECHAT_LOGIN
 ├─ utils/
 │  ├─ api.js                 # request / upload / auth / API 方法

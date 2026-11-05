@@ -72,11 +72,14 @@ wx.login() → POST /api/auth/wechat → 服务端 code2Session → 签发会话
 | 目标 | `pages/goals/index` | 昵称、减脂/维持/增肌、身体数据、自动目标、体重趋势入口 |
 | 体重趋势 | `pages/weight/index` | 每周记录、12 周折线、周平均、删除记录；新体重自动同步目标 |
 
+底部导航使用 `custom-tab-bar/`：悬浮玻璃胶囊、选中项滑块和 iOS 安全区适配。三个 tab 页在 `onShow` 里同步选中项，页面底部预留了 214rpx 防止内容被遮挡。
+
 ## 5. 结构
 
 ```text
 miniprogram/
 ├─ app.js / app.json / app.wxss
+├─ custom-tab-bar/             # 悬浮液态玻璃底部导航
 ├─ config.js                   # API 地址、是否启用微信登录
 ├─ utils/
 │  ├─ api.js                   # wx.request / wx.uploadFile / 会话

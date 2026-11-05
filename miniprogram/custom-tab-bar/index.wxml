@@ -1,0 +1,32 @@
+<view class="tabbar-shell">
+  <view class="tabbar-glass">
+    <view class="glass-halo"></view>
+    <view class="glass-sheen"></view>
+    <view class="glass-rim"></view>
+
+    <view class="tab-track">
+      <view class="tab-pill" style="transform: translateX({{selected * 100}}%);">
+        <view class="pill-sheen"></view>
+      </view>
+    </view>
+
+    <view
+      wx:for="{{tabs}}"
+      wx:key="route"
+      class="tab-item {{selected == index ? 'active' : ''}}"
+      data-index="{{index}}"
+      bindtap="onTab"
+      hover-class="tab-hover"
+      hover-stay-time="80"
+    >
+      <view class="tab-icon-wrap">
+        <image
+          class="tab-icon"
+          src="{{selected == index ? item.activeIcon : item.icon}}"
+          mode="aspectFit"
+        ></image>
+      </view>
+      <text class="tab-label">{{item.text}}</text>
+    </view>
+  </view>
+</view>
