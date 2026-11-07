@@ -1,0 +1,229 @@
+<view class="report-page">
+  <view class="page-head">
+    <text class="eyebrow">WEEKLY REPORT</text>
+    <view class="page-title">这一周，<br />吃得怎么样？</view>
+    <view class="page-sub">只看趋势，不评价胖瘦。周报只用饮食记录生成，不包含体重和照片。</view>
+  </view>
+
+  <view class="week-switcher">
+    <view class="week-arrow {{canGoPrev ? '' : 'is-disabled'}}" bindtap="onPrev">‹</view>
+    <view class="week-center">
+      <text class="week-range">{{weekLabel}}</text>
+      <text class="week-tag {{isCurrentWeek ? 'now' : ''}}">{{isCurrentWeek ? '本周' : '历史周'}}</text>
+    </view>
+    <view class="week-arrow {{canGoNext ? '' : 'is-disabled'}}" bindtap="onNext">›</view>
+  </view>
+
+  <view wx:if="{{loading && !report}}" class="report-loading">
+    <view class="loading-dot"></view>
+    <text>正在整理这一周…</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="report-error">
+    <text class="error-title">周报没有加载出来</text>
+    <text class="error-copy">{{loadError}}</text>
+    <button class="btn btn-soft btn-small error-btn" bindtap="onRetry">重试</button>
+  </view>
+
+  <block wx:elif="{{report}}">
+    <view class="report-hero">
+      <view class="hero-top">
+        <text class="eyebrow eyebrow-light">STREAK</text>
+        <text class="hero-date">{{recordedDays}} / 7 天有记录</text>
+      </view>
+      <view class="hero-main">
+        <view class="hero-streak">
+          <text class="hero-number">{{streakCurrent}}</text>
+          <text class="hero-unit">天</text>
+          <text class="hero-label">当前连续</text>
+        </view>
+        <view class="hero-side">
+          <text class="hero-side-value">{{averageKcalText}}</text>
+          <text class="hero-side-label">平均 kcal / 天</text>
+          <text class="hero-side-note">{{headline}}</text>
+        </view>
+      </view>
+      <view class="hero-foot">
+        <text>最长连续 {{streakLongest}} 天</text>
+        <text wx:if="{{hasComparison}}">{{comparisonFootText}}</text>
+        <text wx:else>上周还没有记录</text>
+      </view>
+    </view>
+
+    <view class="stat-grid">
+      <view class="stat-cell">
+        <text class="stat-value">{{calorieHitDays}}<text class="stat-unit">/{{recordedDays}}</text></text>
+        <text class="stat-label">热量达标</text>
+      </view>
+      <view class="stat-cell">
+        <text class="stat-value">{{proteinHitDays}}<text class="stat-unit">/{{recordedDays}}</text></text>
+        <text class="stat-label">蛋白质达标</text>
+      </view>
+      <view class="stat-cell">
+        <text class="stat-value">{{averageQualityText}}</text>
+        <text class="stat-label">平均餐盘质量</text>
+        <text class="stat-sub">{{qualityLabel || '还没有评分'}}</text>
+      </view>
+      <view class="stat-cell">
+        <text class="stat-value">{{averageProteinText}}<text class="stat-unit">g</text></text>
+        <text class="stat-label">平均蛋白质</text>
+      </view>
+    </view>
+
+    <view wx:if="{{isCurrentWeek && todayRecorded}}" class="live-note">
+      <text class="live-dot"></text>
+      今天还没结束，平均与达标天数会随今天的记录继续变化。
+    </view>
+
+    <view wx:if="{{!hasRecords}}" class="card empty-report">
+      <view class="empty-icon">◒</view>
+      <view class="empty-title">从第一餐开始</view>
+      <view class="empty-copy">拍下接下来吃的一餐，周报就会从第一天开始长出来。不用一次记满一天。</view>
+      <button class="btn btn-primary btn-full empty-btn" bindtap="onStart">去记录一餐</button>
+    </view>
+
+    <block wx:if="{{hasRecords}}">
+      <view class="card chart-card">
+        <view class="card-head">
+          <view>
+            <text class="eyebrow">CALORIES</text>
+            <view class="section-title">7 天热量</view>
+          </view>
+          <text class="chart-note">目标 {{targets.kcal}} kcal</text>
+        </view>
+        <view class="chart">
+          <view class="chart-plot">
+            <view class="target-line" style="bottom: {{kcalTargetBottom}}rpx;">
+              <text class="target-label">{{targets.kcal}}</text>
+            </view>
+            <view class="bars">
+              <view wx:for="{{days}}" wx:key="date" class="bar-col">
+                <text class="bar-value">{{item.kcalText}}</text>
+                <view
+                  class="bar {{item.recorded ? 'bar-on' : 'bar-off'}} {{item.stateClass}} {{item.isToday ? 'bar-today' : ''}}"
+                  style="height: {{item.barHeight}}rpx;"
+                ></view>
+              </view>
+            </view>
+          </view>
+          <view class="chart-labels">
+            <view wx:for="{{days}}" wx:key="date" class="label-col">
+              <text class="bar-day {{item.isToday ? 'is-today' : ''}}">{{item.label}}</text>
+              <text class="bar-date">{{item.shortLabel}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="chart-foot">
+          <text>柱高是当天摄入，虚线是每日目标。</text>
+          <text>{{calorieHitDays}} 天在目标附近</text>
+        </view>
+      </view>
+
+      <view class="card chart-card">
+        <view class="card-head">
+          <view>
+            <text class="eyebrow">PROTEIN</text>
+            <view class="section-title">7 天蛋白质</view>
+          </view>
+          <text class="chart-note">目标 {{targets.protein}}g</text>
+        </view>
+        <view class="chart chart--protein">
+          <view class="chart-plot">
+            <view class="target-line" style="bottom: {{proteinTargetBottom}}rpx;">
+              <text class="target-label">{{targets.protein}}g</text>
+            </view>
+            <view class="bars">
+              <view wx:for="{{days}}" wx:key="date" class="bar-col">
+                <text class="bar-value">{{item.proteinText}}</text>
+                <view
+                  class="bar bar--protein {{item.recorded ? 'bar-on' : 'bar-off'}} {{item.isToday ? 'bar-today' : ''}}"
+                  style="height: {{item.proteinHeight}}rpx;"
+                ></view>
+              </view>
+            </view>
+          </view>
+          <view class="chart-labels">
+            <view wx:for="{{days}}" wx:key="date" class="label-col">
+              <text class="bar-day {{item.isToday ? 'is-today' : ''}}">{{item.label}}</text>
+              <text class="bar-date">{{item.shortLabel}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="chart-foot">
+          <text>蛋白质达标指达到目标的 90%。</text>
+          <text>{{proteinHitDays}} 天达标</text>
+        </view>
+      </view>
+
+      <view class="card day-card">
+        <view class="card-head">
+          <view>
+            <text class="eyebrow">DETAIL</text>
+            <view class="section-title">每天明细</view>
+          </view>
+          <text class="chart-note">{{recordedDays}} 天有记录</text>
+        </view>
+        <view class="day-list">
+          <view wx:for="{{days}}" wx:key="date" class="day-row {{item.isToday ? 'is-today' : ''}}">
+            <text class="day-name">{{item.label}}</text>
+            <text class="day-date">{{item.shortLabel}}</text>
+            <view class="day-values">
+              <text wx:if="{{item.recorded}}" class="day-kcal">{{item.kcalText}} kcal</text>
+              <text wx:else class="day-empty">没有记录</text>
+              <text wx:if="{{item.recorded}}" class="day-protein">蛋白 {{item.proteinText}}g · 质量 {{item.quality}}</text>
+            </view>
+            <text class="day-state {{item.stateClass}}">{{item.stateLabel}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="card compare-card">
+      <view class="card-head">
+        <view>
+          <text class="eyebrow">VS LAST WEEK</text>
+          <view class="section-title">{{comparisonTitle}}</view>
+        </view>
+        <text class="chart-note">{{comparisonRange}}</text>
+      </view>
+      <view wx:if="{{hasComparison}}" class="compare-list">
+        <view wx:for="{{comparisonRows}}" wx:key="label" class="compare-row">
+          <text class="compare-label">{{item.label}}</text>
+          <text class="compare-value {{item.tone}}">{{item.value}}</text>
+          <text class="compare-prev">上周 {{item.previous}}</text>
+        </view>
+      </view>
+      <view wx:else class="compare-empty">上周还没有记录，先积累一周再比较。</view>
+    </view>
+
+    <view class="card summary-card">
+      <view class="summary-top">
+        <text class="eyebrow">SUMMARY</text>
+        <text class="summary-mark">✦</text>
+      </view>
+      <view class="summary-title">{{headline}}</view>
+      <view class="summary-body">{{summaryBody}}</view>
+      <view class="tip-list">
+        <view wx:for="{{tips}}" wx:key="title" class="tip-item">
+          <text class="tip-index">0{{index + 1}}</text>
+          <view class="tip-copy">
+            <text class="tip-title">{{item.title}}</text>
+            <text class="tip-body">{{item.body}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="share-card">
+      <view class="share-copy">
+        <text class="share-title">把这一周分享出去</text>
+        <text class="share-sub">卡片只包含记录天数和平均热量，不含体重和照片。</text>
+      </view>
+      <button class="btn share-btn" open-type="share">分享</button>
+    </view>
+
+    <view class="report-foot">
+      周报按自然周（周一到周日）统计；热量达标指摄入在目标的 85%–110%。历史周使用当前目标计算。
+    </view>
+  </block>
+</view>

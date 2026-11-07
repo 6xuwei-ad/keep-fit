@@ -149,6 +149,17 @@ export interface RecentFoodRecord {
   lastEatenAt: string;
 }
 
+/** 周报用的按天汇总，不加载具体食物，减少查询量。 */
+export interface DailyTotalsRow {
+  date: string;
+  mealCount: number;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+}
+
 function mapProfile(row: ProfileRow): Profile {
   const body: BodyProfile = {
     sex: (row.sex as Sex | null) ?? null,
@@ -627,6 +638,94 @@ export class Store {
       byMeal.set(item.meal_id, list);
     }
     return rows.map((row) => mapMeal(row, byMeal.get(row.id) ?? []));
+  }
+
+  /** 周报只需要每天的总量，不加载具体食物。 */
+  listDailyTotals(deviceId: string, start: string, end: string): DailyTotalsRow[] {
+    const rows = this.db
+      .prepare(
+        `SELECT date,
+                COUNT(*) AS meal_count,
+                COALESCE(SUM(calories), 0) AS kcal,
+                COALESCE(SUM(protein), 0) AS protein,
+                COALESCE(SUM(carbs), 0) AS carbs,
+                COALESCE(SUM(fat), 0) AS fat,
+                COALESCE(SUM(fiber), 0) AS fiber
+         FROM meals
+         WHERE device_id = ? AND date >= ? AND date <= ?
+         GROUP BY date
+         ORDER BY date ASC`
+      )
+      .all(deviceId, start, end) as unknown as Array<{
+      date: string;
+      meal_count: number;
+      kcal: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiber: number;
+    }>;
+
+    return rows.map((row) => ({
+      date: row.date,
+      mealCount: Number(row.meal_count),
+      kcal: Number(row.kcal),
+      protein: Number(row.protein),
+      carbs: Number(row.carbs),
+      fat: Number(row.fat),
+      fiber: Number(row.fiber)
+    }));
+  }
+
+  /** 一次性取出某个日期区间的餐次和食材，用于周报的餐盘质量。 */
+  listMealsRange(deviceId: string, start: string, end: string): Meal[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM meals
+         WHERE device_id = ? AND date >= ? AND date <= ?
+         ORDER BY date ASC, eaten_at ASC`
+      )
+      .all(deviceId, start, end) as unknown as MealRow[];
+    if (rows.length === 0) return [];
+
+    const items = this.db
+      .prepare(
+        `SELECT mi.*, m.id AS meal_id
+         FROM meal_items mi
+         JOIN meals m ON m.id = mi.meal_id
+         WHERE m.device_id = ? AND m.date >= ? AND m.date <= ?
+         ORDER BY m.date ASC, m.eaten_at ASC, mi.order_index ASC`
+      )
+      .all(deviceId, start, end) as unknown as Array<ItemRow & { meal_id: string }>;
+
+    const byMeal = new Map<string, FoodItem[]>();
+    for (const item of items) {
+      const list = byMeal.get(item.meal_id) ?? [];
+      list.push(mapItem(item));
+      byMeal.set(item.meal_id, list);
+    }
+    return rows.map((row) => mapMeal(row, byMeal.get(row.id) ?? []));
+  }
+
+  /** 按日期倒序返回有记录的日期，用于连续记录。 */
+  listRecordedDates(deviceId: string, limit = 400): string[] {
+    const rows = this.db
+      .prepare(
+        `SELECT date FROM meals
+         WHERE device_id = ?
+         GROUP BY date
+         ORDER BY date DESC
+         LIMIT ?`
+      )
+      .all(deviceId, limit) as unknown as Array<{ date: string }>;
+    return rows.map((row) => row.date);
+  }
+
+  getEarliestMealDate(deviceId: string): string | null {
+    const row = this.db
+      .prepare("SELECT MIN(date) AS date FROM meals WHERE device_id = ?")
+      .get(deviceId) as { date: string | null } | undefined;
+    return row?.date ?? null;
   }
 
   deleteMeal(deviceId: string, id: string): boolean {

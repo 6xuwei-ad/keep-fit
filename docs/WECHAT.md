@@ -1,7 +1,7 @@
 # 微信小程序运行、登录与发布
 
 > 状态：**原生微信小程序客户端已实现**，位于 `miniprogram/`。  
-> 直接调仓库根目录的 Express API，共用食物库、营养引擎和 SQLite。v2.0 起不再维护 Web 端。
+> 直接调仓库根目录的 Express API，共用食物库、营养引擎和 SQLite。v2.0 起不再维护 Web 端，v2.1 增加饮食周报。
 
 ---
 
@@ -10,7 +10,7 @@
 | 能力 | 实现 |
 | --- | --- |
 | 原生工程 | `project.config.json` + `miniprogramRoot: miniprogram/` |
-| 页面 | 今日、确认份量、食物搜索、日记、目标，共 5 页 |
+| 页面 | 今日、确认份量、食物搜索、日记、目标、体重趋势、本周报告，共 7 页 |
 | tabBar | 3 个自定义悬浮 tab + 6 张 81×81 图标 |
 | 拍照/相册 | `wx.chooseMedia`（旧基础库回退 `wx.chooseImage`） |
 | 上传识别 | `wx.uploadFile` → `POST /api/analyze` |
@@ -23,8 +23,9 @@
 | 保存/删除 | 服务端重算、按身份隔离、级联删除 items |
 | 常用餐 | 存为常用餐、首页一键记录、复制昨天 |
 | 份量 | 100/75/50/25% 剩饭折算、可点击的份量参照 |
-| 下拉刷新 | 首页、日记、目标 |
-| 分享 | 分享卡片回到首页 |
+| 下拉刷新 | 首页、日记、目标、周报 |
+| 周报 | 7 天热量/蛋白质柱状图、达标天数、连续记录、上周对比、周总结 |
+| 分享 | 分享卡片回到首页；周报分享不含体重和照片 |
 
 **验收状态：** 组件/页面脚本加载、WXML 结构、WXSS 语法、营养与建议一致性均通过自动检查；还需要在微信开发者工具中做一次真实编译与真机预览。常用错误见第 8 节。
 
@@ -156,7 +157,7 @@ SESSION_TTL_SECONDS=2592000
 ```text
 miniprogram/
 ├─ app.js                    # onLaunch: 设备 ID + 微信登录
-├─ app.json                  # 6 页面、custom tabBar、全局组件
+├─ app.json                  # 7 页面、custom tabBar、全局组件
 ├─ app.wxss                  # 设计 tokens 与公共样式
 ├─ custom-tab-bar/           # 悬浮液态玻璃底部导航
 ├─ config.js                 # API_BASE / USE_WECHAT_LOGIN
@@ -176,7 +177,8 @@ miniprogram/
 │  ├─ food-search/
 │  ├─ journal/
 │  ├─ goals/
-│  └─ weight/
+│  ├─ weight/
+│  └─ report/
 └─ images/                   # tabBar 图标、logo、示例餐盘
 ```
 
@@ -191,7 +193,7 @@ miniprogram/
 - 同一套服务端保存时重算逻辑；
 - `miniprogram/utils/nutrition.js` 与 `shared/nutrition.ts` 公式一致；
 - `miniprogram/utils/advice.js` 与 `shared/advice.ts` 规则一致；
-- `npm test` 中有专门测试：加载所有页面/组件、比对营养计算、校验建议始终三条。
+- `npm test` 中有专门测试：加载所有页面/组件、比对营养计算、校验建议始终三条；周报的统计与接口由服务端测试覆盖。
 
 修改营养/评分规则时，**两处必须同步**。
 

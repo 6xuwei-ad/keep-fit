@@ -159,6 +159,10 @@ module.exports = {
   deleteWeight(id) {
     return request(`/api/weights/${id}`, { method: "DELETE" });
   },
+  getWeeklyReport(weekStart) {
+    const query = weekStart ? `?weekStart=${encodeURIComponent(weekStart)}` : "";
+    return request(`/api/reports/weekly${query}`);
+  },
   getCustomFoods() {
     return request("/api/custom-foods");
   },

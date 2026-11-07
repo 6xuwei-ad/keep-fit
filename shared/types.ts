@@ -250,6 +250,83 @@ export interface DaySummary {
   advice: Advice[];
 }
 
+/** 周报里的一天：没有记录的日子也会占位，保证 7 根柱子对齐。 */
+export interface WeekDay {
+  date: string;
+  weekday: number;
+  label: string;
+  shortLabel: string;
+  recorded: boolean;
+  isToday: boolean;
+  isFuture: boolean;
+  isWeekend: boolean;
+  totals: NutritionFacts;
+  mealCount: number;
+  quality: number | null;
+  calorieHit: boolean;
+  proteinHit: boolean;
+  caloriePercent: number;
+}
+
+/** 连续记录天数；今天还没记时从昨天开始算，避免白天显示断签。 */
+export interface WeekStreak {
+  current: number;
+  longest: number;
+  lastRecordedDate: string | null;
+  activeToday: boolean;
+}
+
+/** 与上一自然周的对比，差值为 null 表示那一周没有可比较的记录。 */
+export interface WeekComparison {
+  weekStart: string;
+  weekEnd: string;
+  /** 本周还没过完时，只和上周同样的星期几对比，避免周一就显示“比上周少记 4 天”。 */
+  partial: boolean;
+  recordedDays: number;
+  averageKcal: number | null;
+  averageProtein: number | null;
+  averageQuality: number | null;
+  deltaRecordedDays: number;
+  deltaKcal: number | null;
+  deltaProtein: number | null;
+  deltaQuality: number | null;
+}
+
+export interface WeekSummaryTip {
+  title: string;
+  body: string;
+}
+
+export interface WeekSummary {
+  headline: string;
+  body: string;
+  tips: WeekSummaryTip[];
+}
+
+/** 周报只描述饮食记录，不包含体重和照片。 */
+export interface WeeklyReport {
+  weekStart: string;
+  weekEnd: string;
+  isCurrentWeek: boolean;
+  today: string;
+  days: WeekDay[];
+  recordedDays: number;
+  calorieHitDays: number;
+  proteinHitDays: number;
+  averageKcal: number | null;
+  averageProtein: number | null;
+  averageQuality: number | null;
+  qualityLabel: string | null;
+  streak: WeekStreak;
+  comparison: WeekComparison;
+  summary: WeekSummary;
+  targets: Targets;
+  canGoPrev: boolean;
+  canGoNext: boolean;
+  previousWeekStart: string | null;
+  nextWeekStart: string | null;
+}
+
 export interface AppMeta {
   visionEnabled: boolean;
   demoAllowed: boolean;

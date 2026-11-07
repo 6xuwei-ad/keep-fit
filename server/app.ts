@@ -42,6 +42,7 @@ import { signSession, verifySession } from "./lib/session.ts";
 import { FOOD_BY_ID, searchFoods, type FoodRecord } from "./data/foods.ts";
 import { assembleAnalysis } from "./services/analysis.ts";
 import { itemsTotal, makeFoodItem } from "./services/items.ts";
+import { buildWeeklyReportFor } from "./services/report.ts";
 import { buildDemoRecognition, recognizeFood } from "./services/vision.ts";
 
 const GOALS: Goal[] = ["fat-loss", "maintain", "muscle"];
@@ -633,6 +634,16 @@ export function createApp({ config, store }: CreateAppOptions) {
       }
       const synced = store.syncWeightToProfile(deviceId);
       res.json({ profile: synced.profile, targetsUpdated: synced.targetsUpdated });
+    })
+  );
+
+  app.get(
+    "/api/reports/weekly",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const requested =
+        typeof req.query.weekStart === "string" ? req.query.weekStart : null;
+      res.json(buildWeeklyReportFor(store, deviceId, requested));
     })
   );
 

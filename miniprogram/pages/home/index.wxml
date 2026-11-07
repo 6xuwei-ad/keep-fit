@@ -113,6 +113,18 @@
     </view>
   </view>
 
+  <navigator class="report-strip fade-up" url="/pages/report/index">
+    <view class="report-strip-mark">◒</view>
+    <view class="report-strip-copy">
+      <text class="report-strip-title">本周报告</text>
+      <text class="report-strip-sub">{{reportSummary}}</text>
+    </view>
+    <view class="report-strip-right">
+      <view wx:if="{{reportStreak > 0}}" class="report-strip-value">{{reportStreak}}<text> 天</text></view>
+      <text class="report-strip-link">{{reportStreak > 0 ? '连续记录' : '查看'}} ›</text>
+    </view>
+  </navigator>
+
   <navigator class="weight-strip fade-up" url="/pages/weight/index">
     <view class="weight-strip-mark">◔</view>
     <view class="weight-strip-copy">

@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import type { AddressInfo } from "node:net";
 import { localDateKey, shiftDateKey } from "../../shared/nutrition.ts";
+import { weekStartKey } from "../../shared/weight.ts";
 import type {
   AnalysisResult,
   CustomFood,
@@ -14,6 +15,7 @@ import type {
   MealTemplate,
   Profile,
   RepeatResponse,
+  WeeklyReport,
   WeightLog,
   WeightTrendResponse
 } from "../../shared/types.ts";
@@ -603,6 +605,103 @@ test("识别、保存、汇总、删除的完整 API 流程", async (t) => {
   assert.equal(incompleteBody.status, 400);
   const incompleteBodyBody = (await incompleteBody.json()) as { code: string };
   assert.equal(incompleteBodyBody.code, "BODY_INCOMPLETE");
+});
+
+test("周报：自然周口径、连续记录与未来周校验", async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "shike-report-"));
+  const config = loadConfig({
+    dataDir: dir,
+    uploadDir: path.join(dir, "uploads"),
+    publicDir: path.join(process.cwd(), "public")
+  });
+  const store = new Store(path.join(dir, "test.db"));
+  const app = createApp({ config, store });
+  const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const port = (server.address() as AddressInfo).port;
+  const base = `http://127.0.0.1:${port}`;
+
+  t.after(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    store.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const device = "test-device-report";
+  const headers = { "x-device-id": device, "Content-Type": "application/json" };
+  const today = localDateKey();
+  const weekStart = weekStartKey(today);
+
+  const addMeal = async (date: string) => {
+    const response = await fetch(`${base}/api/meals`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: "周报测试餐",
+        mealType: "lunch",
+        date,
+        eatenAt: `${date}T12:00:00+08:00`,
+        imageUrl: null,
+        engine: "周报测试",
+        items: [
+          {
+            name: "米饭",
+            category: "staple",
+            grams: 200,
+            per100g: { kcal: 116, protein: 2.6, carbs: 25.9, fat: 0.3, fiber: 0.3 }
+          }
+        ]
+      })
+    });
+    assert.equal(response.status, 201);
+  };
+
+  await addMeal(today);
+  await addMeal(shiftDateKey(today, -1));
+  await addMeal(shiftDateKey(today, -2));
+
+  const response = await fetch(`${base}/api/reports/weekly`, {
+    headers: { "x-device-id": device }
+  });
+  assert.equal(response.status, 200);
+  const report = (await response.json()) as WeeklyReport;
+  assert.equal(report.weekStart, weekStart);
+  assert.equal(report.weekEnd, shiftDateKey(weekStart, 6));
+  assert.equal(report.days.length, 7);
+  assert.equal(report.isCurrentWeek, true);
+  assert.equal(report.canGoNext, false);
+  assert.equal(report.streak.current, 3);
+  assert.equal(report.streak.longest, 3);
+  assert.ok(report.recordedDays >= 1);
+  assert.ok(report.averageKcal !== null && report.averageKcal > 0);
+  assert.equal(report.summary.tips.length, 3);
+  assert.equal(report.targets.kcal, 1800);
+  // 如果今天是周一/周二，前天/昨天可能落在上一周，所以只校验对比结构存在。
+  assert.ok(report.comparison.recordedDays <= 3);
+  assert.equal(typeof report.comparison.partial, "boolean");
+
+  const previousResponse = await fetch(
+    `${base}/api/reports/weekly?weekStart=${shiftDateKey(weekStart, -7)}`,
+    { headers: { "x-device-id": device } }
+  );
+  assert.equal(previousResponse.status, 200);
+  const previousReport = (await previousResponse.json()) as WeeklyReport;
+  assert.equal(previousReport.isCurrentWeek, false);
+  assert.equal(previousReport.canGoNext, true);
+  assert.equal(previousReport.nextWeekStart, weekStart);
+
+  const future = await fetch(
+    `${base}/api/reports/weekly?weekStart=${shiftDateKey(weekStart, 7)}`,
+    { headers: { "x-device-id": device } }
+  );
+  assert.equal(future.status, 400);
+  assert.equal(((await future.json()) as { code: string }).code, "WEEK_FUTURE");
+
+  const invalid = await fetch(`${base}/api/reports/weekly?weekStart=2026-13-40`, {
+    headers: { "x-device-id": device }
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal(((await invalid.json()) as { code: string }).code, "INVALID_WEEK");
 });
 
 test("缺少设备标识时拒绝访问个人数据", async (t) => {

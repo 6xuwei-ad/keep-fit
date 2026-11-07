@@ -281,6 +281,100 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 ---
 
+## 周报与连续记录
+
+### `GET /api/reports/weekly?weekStart=2026-11-03`
+
+`weekStart` 可选，传该周任意一天即可，服务端统一归一到周一；不传时取上海时区本周。返回 7 天占位（没有记录的日子也会返回），以及达标天数、连续记录、上周对比和三条可执行建议。
+
+```json
+{
+  "weekStart": "2026-11-02",
+  "weekEnd": "2026-11-08",
+  "isCurrentWeek": true,
+  "today": "2026-11-07",
+  "days": [
+    {
+      "date": "2026-11-02",
+      "weekday": 1,
+      "label": "周一",
+      "shortLabel": "11/2",
+      "recorded": false,
+      "isToday": false,
+      "isFuture": false,
+      "isWeekend": false,
+      "totals": { "kcal": 0, "protein": 0, "carbs": 0, "fat": 0, "fiber": 0 },
+      "mealCount": 0,
+      "quality": null,
+      "calorieHit": false,
+      "proteinHit": false,
+      "caloriePercent": 0
+    }
+  ],
+  "recordedDays": 3,
+  "calorieHitDays": 1,
+  "proteinHitDays": 1,
+  "averageKcal": 1667,
+  "averageProtein": 80,
+  "averageQuality": 72,
+  "qualityLabel": "还有提升空间",
+  "streak": {
+    "current": 1,
+    "longest": 3,
+    "lastRecordedDate": "2026-11-07",
+    "activeToday": true
+  },
+  "comparison": {
+    "weekStart": "2026-10-26",
+    "weekEnd": "2026-10-31",
+    "partial": true,
+    "recordedDays": 2,
+    "averageKcal": 1850,
+    "averageProtein": 105,
+    "averageQuality": 76,
+    "deltaRecordedDays": 1,
+    "deltaKcal": -183,
+    "deltaProtein": -25,
+    "deltaQuality": -4
+  },
+  "summary": {
+    "headline": "节奏还在形成",
+    "body": "本周记录了 3 天，平均 1667 kcal（目标 1800 kcal），蛋白质平均 80g；热量达标 1 天，蛋白质达标 1 天。",
+    "tips": [
+      { "title": "下周先把记录提到 4 天", "body": "不用每天都记……" },
+      { "title": "固定一个记录时间", "body": "把记录放在晚餐后或睡前……" },
+      { "title": "比上周多记了几天", "body": "本周 3 天，上周 2 天……" }
+    ]
+  },
+  "targets": { "kcal": 1800, "protein": 110, "carbs": 190, "fat": 55, "fiber": 25 },
+  "canGoPrev": true,
+  "canGoNext": false,
+  "previousWeekStart": "2026-10-26",
+  "nextWeekStart": null
+}
+```
+
+口径：
+
+- **自然周**：周一到周日。`weekStart` 传周中任意一天都会归一到周一；未来周返回 `400 WEEK_FUTURE`。
+- **热量达标**：有记录且当天摄入在目标的 85%–110% 之间；**蛋白质达标**：有记录且 ≥ 目标的 90%。
+- **平均值**只除以有记录的天数，不会用 0 分拉低平均；没有记录时返回 `null`。本周报告是实时的，今天还没结束时平均值和达标天数会随后续记录变化。
+- **餐盘质量**：按全天蛋白质、纤维、蔬菜多样性和热量偏差计算的 30–98 分，仅用于周内趋势，不是医学指标。
+- **连续记录**：从今天往前数；今天还没记录时从昨天开始数，避免白天误判断签。`longest` 在最近 400 个有记录的日期内统计。
+- **上周对比**：本周还没过完时，只对比上周同样的星期几（`partial: true`，`weekEnd` 是上周对应的截止日），避免周一就出现“比上周少记 4 天”；查看历史周时对比完整的上一个自然周（`partial: false`）。上周没有记录时 `recordedDays` 为 0，差值字段为 `null`。
+- **目标口径**：历史周也使用当前档案目标，尚未做目标版本化；页面对此有说明。
+- **隐私**：响应只包含饮食汇总，不包含体重、照片或食材明细。
+- `canGoPrev` 取决于是否存在更早的饮食记录；`canGoNext` 取决于是否早于本周。对应的 `previousWeekStart` / `nextWeekStart` 在不可跳转时为 `null`。
+
+错误：
+
+| 状态 | code | 场景 |
+| --- | --- | --- |
+| 400 | `INVALID_WEEK` | `weekStart` 不是合法日期 |
+| 400 | `WEEK_FUTURE` | `weekStart` 晚于本周 |
+
+---
+
 ## 食物库
 
 ### `GET /api/foods?q=鸡胸`

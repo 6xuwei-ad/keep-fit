@@ -120,7 +120,8 @@ flowchart LR
 │  │  ├─ food-search/            # 食物库搜索与最近吃过
 │  │  ├─ journal/                # 日记录
 │  │  ├─ goals/                  # 身体数据与目标
-│  │  └─ weight/                 # 体重趋势、周平均、目标同步
+│  │  ├─ weight/                 # 体重趋势、周平均、目标同步
+│  │  └─ report/                 # 周报、连续记录、上周对比
 │  ├─ utils/
 │  │  ├─ api.js                  # wx.request / uploadFile / 登录
 │  │  ├─ nutrition.js            # 与服务端共享公式
@@ -142,6 +143,7 @@ flowchart LR
 │  ├─ services/items.ts          # 结果归一化、合并、求和
 │  ├─ services/aliases.ts        # 用户别名归一化与识别前应用
 │  ├─ services/analysis.ts       # 评分与建议组装
+│  ├─ services/report.ts         # 周报数据装配（按天汇总 + 区间餐次）
 │  ├─ lib/image.ts               # 图片魔数、保存
 │  ├─ lib/session.ts             # HMAC 会话
 │  └─ tests/                     # node:test
@@ -151,7 +153,8 @@ flowchart LR
 │  ├─ nutrition.ts
 │  ├─ advice.ts
 │  ├─ body.ts
-│  └─ weight.ts                  # 自然周聚合与体重变化
+│  ├─ weight.ts                  # 自然周聚合与体重变化
+│  └─ weekly.ts                  # 周报：达标、连续记录、对比、总结
 │
 ├─ public/images/demo-bowl.jpg   # 演示模式使用；由 Express 提供
 ├─ scripts/check-miniprogram.mjs # 小程序静态检查
@@ -192,6 +195,7 @@ ready()              等待微信登录 / 设备 ID 初始化
 | `journal` | 按天查看、删除、再来一份、存为常用餐 |
 | `goals` | 昵称、目标、身体数据、自动/手动目标、体重入口 |
 | `weight` | 记录/修正体重、12 周折线、周平均、删除记录 |
+| `report` | 7 天热量/蛋白质柱状图、达标天数、连续记录、上周对比、周总结、分享 |
 
 `review` 是唯一持有“未保存识别结果”的页面。保存成功后把 `meal` 放入 `globalData.lastSaved`，再 `switchTab` 到日记。
 
@@ -254,6 +258,17 @@ review 页面保存 `baseGrams`（100% 基准）与当前 `grams`，因此：
 - 替换时把原叫法写入 `food_aliases`，下次识别在 `assembleAnalysis` 之前应用；
 - 别名和应用逻辑都在服务端，客户端只负责发起替换。
 
+### 5.8 周报与连续记录
+
+- `pages/report/index` 只负责展示，不做统计；`?weekStart=` 可打开指定自然周；
+- 7 根热量柱和 7 根蛋白质柱都用 WXML 的普通 view 绘制，不引入图表库；
+- 柱高、目标线位置由页面按服务端返回的数值换算成 rpx；
+- 连续记录、达标天数、上周对比、总结文案全部由 `shared/weekly.ts` 计算；
+- 本周还没过完时，上周对比只取同样的星期几，避免周一出现“比上周少记 4 天”；
+- 首页入口只请求当前周，接口失败时静默隐藏，不阻塞拍照和日记；
+- 分享使用 `onShareAppMessage`，标题只包含记录天数和平均热量，路径回首页；
+- 历史周沿用当前目标，因为目前没有目标版本表。
+
 ---
 
 ## 6. 后端架构
@@ -270,12 +285,14 @@ app.ts
   ├─ Zod 请求校验
   └─ 路由
        ├─ analyze → image 魔数 → saveImage → vision → analysis
-       └─ meals / templates → makeFoodItem → itemsTotal → Store.insertMeal
+       ├─ meals / templates → makeFoodItem → itemsTotal → Store.insertMeal
+       └─ reports/weekly → Store 区间汇总 → shared/weekly
   ↓
 services/                  纯业务
   ├─ vision.ts             外部模型边界
   ├─ items.ts              结果归一化
-  └─ analysis.ts           组装 + 评分 + 建议
+  ├─ analysis.ts           组装 + 评分 + 建议
+  └─ report.ts             周报数据装配
   ↓
 store.ts                   SQLite，唯一数据访问入口
 ```
@@ -418,7 +435,36 @@ sequenceDiagram
 - 别名不改变份量，克数仍由用户确认；
 - 别名命中时把置信度至少提升到 0.9，避免再次被低置信度提示打断。
 
-### 7.5 失败与降级矩阵
+### 7.5 周报读取
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 用户
+  participant W as 小程序
+  participant A as Express
+  participant D as SQLite
+  participant R as shared/weekly
+
+  U->>W: 打开本周报告 / 切到历史周
+  W->>A: GET /api/reports/weekly?weekStart=
+  A->>A: weekStart 归一到周一
+  A->>D: listDailyTotals(本周 7 天)
+  A->>D: listMealsRange(本周 7 天，含 items)
+  A->>D: listDailyTotals / listMealsRange(上周)
+  A->>D: listRecordedDates + getEarliestMealDate
+  A->>R: buildWeeklyReport(...)
+  R-->>A: 7 天占位 + 达标 + 连续 + 对比 + 总结
+  A-->>W: WeeklyReport
+  W->>W: 柱高 / 目标线换算成 rpx
+```
+
+- 只查需要的一周和上一周，不把全部历史加载进内存；
+- 连续记录只取最近 400 个有记录的日期；
+- 没有记录的日子也返回，客户端不需要补位；
+- 历史周使用当前目标，目标版本化留到以后。
+
+### 7.6 失败与降级矩阵
 
 | 情况 | 行为 | 用户看到 |
 | --- | --- | --- |
@@ -710,6 +756,7 @@ PUT    /api/profile
 GET    /api/weights
 POST   /api/weights
 DELETE /api/weights/:id
+GET    /api/reports/weekly?weekStart=YYYY-MM-DD
 GET    /api/foods?q=
 GET    /api/foods?recent=1
 GET    /api/custom-foods
@@ -776,7 +823,7 @@ x-device-id: 8d1f0c2e-...
 ## 14. 测试
 
 ```text
-npm test          19 个测试
+npm test          24 个测试
 npm run typecheck  server/shared 类型检查
 npm run check:mini 小程序 JSON / JS / WXSS / 页面文件 / tabBar 图标
 npm run check     以上三项
@@ -788,6 +835,8 @@ npm run check     以上三项
 - 餐盘评分与三条建议；
 - 身体数据 BMR/TDEE 与目标；
 - 体重按自然周聚合、28 天变化与 API 同步；
+- 周报 7 天占位、热量/蛋白质达标、连续记录、上周对比与总结；
+- 周报接口的自然周归一、未来周校验与设备隔离；
 - 视觉模型 JSON 解析；
 - 会话签名、篡改、过期；
 - 完整 API 流程：识别 → 保存 → 模板 → 复制 → 删除 → 体重 → 自定义食物 → 别名；
@@ -857,8 +906,8 @@ docker run --rm -p 8787:8787 \
 
 ### 16.4 体验
 
-- 饮食周报、连续记录；
 - 订阅消息提醒；
+- 周报目标版本化（历史周使用当时目标，而不是当前目标）；
 - 营养标签 OCR（比商品条码更适合中国零食/饮料）。
 
 ---

@@ -134,7 +134,9 @@ Page({
     mealCount: 0,
     todayNote: "今天还没有记录。第一张照片，就是更清楚饮食的开始。",
     weightLatest: "",
-    weightSummary: "每周记一次，看看变化"
+    weightSummary: "每周记一次，看看变化",
+    reportSummary: "记录一餐后，这里会生成本周报告",
+    reportStreak: 0
   },
 
   onLoad() {
@@ -172,7 +174,9 @@ Page({
           // 常用餐/昨天是增强入口，旧服务端或接口异常时不应拖垮首页。
           api.getRepeat().catch(() => ({ templates: [], yesterday: [] })),
           // 体重入口同理，加载失败时只是不显示数字。
-          api.getWeights().catch(() => null)
+          api.getWeights().catch(() => null),
+          // 周报入口是增强信息，失败时不影响首页主流程。
+          api.getWeeklyReport().catch(() => null)
         ])
       )
       .then((results) => {
@@ -180,6 +184,7 @@ Page({
         const meta = results[1];
         const repeat = results[2] || {};
         const weights = results[3] || {};
+        const weekly = results[4] || null;
         const app = getApp();
         if (day.profile) app.globalData.profile = day.profile;
         const summary = day.summary || EMPTY_SUMMARY;
@@ -198,6 +203,16 @@ Page({
           weightSummary = weights.recordedThisWeek
             ? `本周已记录 · ${weightDate}`
             : `上次 ${weightDate}`;
+        }
+        const reportStreak = weekly && weekly.streak ? weekly.streak.current || 0 : 0;
+        let reportSummary = "记录一餐后，这里会生成本周报告";
+        if (weekly) {
+          reportSummary =
+            weekly.recordedDays > 0
+              ? `本周 ${weekly.recordedDays}/7 天 · 平均 ${Math.round(
+                  weekly.averageKcal || 0
+                )} kcal`
+              : "这一周还没有记录";
         }
         let todayNote = "今天还没有记录。第一张照片，就是更清楚饮食的开始。";
         if (meals.length > 0) {
@@ -231,7 +246,9 @@ Page({
           mealCount: (summary.meals || []).length,
           todayNote,
           weightLatest,
-          weightSummary
+          weightSummary,
+          reportSummary,
+          reportStreak
         });
       })
       .catch((error) => {
