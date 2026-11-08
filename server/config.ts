@@ -7,6 +7,10 @@ export type ReminderTemplateFields = {
   note: string;
 };
 
+export type ReminderFieldMap = Record<ReminderKind, ReminderTemplateFields>;
+
+const REMINDER_KINDS: ReminderKind[] = ["lunch", "dinner", "weekly", "streak"];
+
 const DEFAULT_REMINDER_FIELDS: ReminderTemplateFields = {
   title: "thing1",
   time: "time2",
@@ -30,33 +34,62 @@ export interface AppConfig {
   wechatSecret: string;
   wechatEnabled: boolean;
   reminderTemplates: Record<ReminderKind, string>;
-  reminderFields: ReminderTemplateFields;
+  reminderFields: ReminderFieldMap;
   reminderMiniprogramState: "formal" | "trial" | "developer";
   version: string;
 }
 
-function readReminderFields(): ReminderTemplateFields {
+function normalizeFields(
+  value: unknown,
+  fallback: ReminderTemplateFields
+): ReminderTemplateFields {
+  const source =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
+  const pick = (key: keyof ReminderTemplateFields) => {
+    const candidate = source[key];
+    return typeof candidate === "string" && candidate.trim()
+      ? candidate.trim()
+      : fallback[key];
+  };
+  return {
+    title: pick("title"),
+    time: pick("time"),
+    note: pick("note")
+  };
+}
+
+function defaultFieldMap(): ReminderFieldMap {
+  return Object.fromEntries(
+    REMINDER_KINDS.map((kind) => [kind, { ...DEFAULT_REMINDER_FIELDS }])
+  ) as ReminderFieldMap;
+}
+
+/**
+ * 支持两种写法：
+ * 1. 全局：{"title":"thing1","time":"time2","note":"thing4"}
+ * 2. 按提醒覆盖：{"default":{...},"lunch":{"note":"thing4"},"dinner":{...}}
+ * 微信模板的字段 key 会因所选关键词不同而变化，所以允许每一项单独映射。
+ */
+function readReminderFields(): ReminderFieldMap {
+  const map = defaultFieldMap();
   const raw = process.env.WECHAT_REMINDER_FIELDS?.trim();
-  if (!raw) return { ...DEFAULT_REMINDER_FIELDS };
+  if (!raw) return map;
+
   try {
-    const parsed = JSON.parse(raw) as Partial<ReminderTemplateFields>;
-    return {
-      title:
-        typeof parsed.title === "string" && parsed.title.trim()
-          ? parsed.title.trim()
-          : DEFAULT_REMINDER_FIELDS.title,
-      time:
-        typeof parsed.time === "string" && parsed.time.trim()
-          ? parsed.time.trim()
-          : DEFAULT_REMINDER_FIELDS.time,
-      note:
-        typeof parsed.note === "string" && parsed.note.trim()
-          ? parsed.note.trim()
-          : DEFAULT_REMINDER_FIELDS.note
-    };
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const defaultFields = normalizeFields(
+      parsed.default ?? parsed,
+      DEFAULT_REMINDER_FIELDS
+    );
+    for (const kind of REMINDER_KINDS) {
+      map[kind] = normalizeFields(parsed[kind], defaultFields);
+    }
+    return map;
   } catch {
     console.warn("[config] WECHAT_REMINDER_FIELDS 不是合法 JSON，已使用默认字段");
-    return { ...DEFAULT_REMINDER_FIELDS };
+    return map;
   }
 }
 

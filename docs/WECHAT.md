@@ -167,11 +167,11 @@ SESSION_TTL_SECONDS=2592000
 **微信公众平台配置：**
 
 1. 登录 [微信公众平台](https://mp.weixin.qq.com/) → 功能 → 订阅消息。
-2. 选用或申请“饮食记录提醒”类模板。四条提醒可以各用一个模板，也可以共用同一套字段。
-3. 模板字段建议保持：
-   - `thing1`：提醒事项（≤20 字）
-   - `time2`：提醒时间
-   - `thing3`：温馨提示（≤20 字）
+2. 选用或申请“饮食记录提醒”类模板。四条提醒建议各用一个模板：字段结构可以相同，但模板 ID 必须不同，因为微信额度按模板计算。
+3. 模板字段建议选 3 个：
+   - `thing1`：饮食记录 / 提醒事项（≤20 字）
+   - `time2`：记录时间 / 提醒时间
+   - `thing4` 或 `thing3`：记录餐次 / 温馨提示（≤20 字，具体 key 看模板详情）
 4. 把模板 ID 填进根目录 `.env`：
 
 ```dotenv
@@ -180,12 +180,21 @@ WECHAT_TEMPLATE_DINNER=TmplId...
 WECHAT_TEMPLATE_WEEKLY=TmplId...
 WECHAT_TEMPLATE_STREAK=TmplId...
 
-# 如果你的模板字段不是 thing1/time2/thing3，用 JSON 覆盖
-WECHAT_REMINDER_FIELDS={"title":"thing1","time":"time2","note":"thing3"}
+# 不同模板的字段 key 可能不同，可以按提醒单独映射
+WECHAT_REMINDER_FIELDS={"default":{"title":"thing1","time":"time2","note":"thing3"},"lunch":{"title":"thing1","time":"time2","note":"thing4"}}
 
 # 开发版 developer / 体验版 trial / 正式版 formal
 WECHAT_MINIPROGRAM_STATE=formal
 ```
+
+当前使用的四个模板与字段映射：
+
+| 提醒 | 模板 | 字段映射 |
+| --- | --- | --- |
+| 午餐 | 饮食记录添加提醒 | `thing1` 饮食记录 / `time2` 记录时间 / `thing4` 记录餐次 |
+| 晚餐 | 打卡提醒 | `thing4` 打卡名称 / `time2` 打卡时间 / `thing3` 备注 |
+| 周报 | 测评报告查看提醒 | `thing18` 报告名称 / `time8` 测评时间 / `thing7` 温馨提示 |
+| 连续记录 | 签到提醒 | `thing1` 活动名称 / `time3` 签到时间 / `thing8` 温馨提示 |
 
 5. 重启 API，启动日志出现：
 

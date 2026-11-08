@@ -30,7 +30,13 @@ function reminderConfig(dir: string): AppConfig {
       weekly: "tmpl-weekly",
       streak: "tmpl-streak"
     },
-    reminderFields: { title: "thing1", time: "time2", note: "thing3" },
+    reminderFields: {
+      // 实际“饮食记录添加提醒”模板的第三项是 thing4，这里顺带验证按 kind 映射。
+      lunch: { title: "thing1", time: "time2", note: "thing4" },
+      dinner: { title: "thing1", time: "time2", note: "thing3" },
+      weekly: { title: "thing1", time: "time2", note: "thing3" },
+      streak: { title: "thing1", time: "time2", note: "thing3" }
+    },
     reminderMiniprogramState: "developer"
   });
 }
@@ -114,7 +120,8 @@ test("午餐提醒在没记录时发一次，记录后跳过", async (t) => {
   assert.equal(first.sent, 1);
   assert.equal(sent.length, 1);
   assert.equal(sent[0]!.page, "pages/home/index");
-  assert.equal(sent[0]!.data.thing1!.value, "午餐记一下");
+  assert.equal(sent[0]!.data.thing1!.value, "午餐还没记录");
+  assert.equal(sent[0]!.data.thing4!.value, "午餐");
   assert.equal(store.getReminderGrant(device, "lunch")?.remaining, 0);
   assert.equal(store.getReminderGrant(device, "lunch")?.lastSentOn, "2026-11-08");
 

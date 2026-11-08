@@ -178,11 +178,12 @@ function truncate(value: string, max = 20): string {
 
 function messageData(
   config: AppConfig,
+  kind: ReminderKind,
   title: string,
   time: string,
   note: string
 ): Record<string, { value: string }> {
-  const fields = config.reminderFields;
+  const fields = config.reminderFields[kind];
   return {
     [fields.title]: { value: truncate(title) },
     [fields.time]: { value: truncate(time, 32) },
@@ -206,7 +207,7 @@ function buildMessage(
   const time = formatDateTime(context.date, REMINDER_META[kind].time);
 
   if (kind === "lunch") {
-    return { page, title: "午餐记一下", time, note: "今天还没记录午餐" };
+    return { page, title: "午餐还没记录", time, note: "午餐" };
   }
   if (kind === "dinner") {
     return {
@@ -359,7 +360,7 @@ export async function runReminderTick(
         openid,
         templateId,
         page: message.page,
-        data: messageData(config, message.title, message.time, message.note)
+        data: messageData(config, kind, message.title, message.time, message.note)
       });
 
       if (sendResult.ok) {
