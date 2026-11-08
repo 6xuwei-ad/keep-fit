@@ -415,7 +415,28 @@ Page({
       fail: (error) => {
         this.setData({ reminderBusy: "" });
         if (enableAfter) this.updateReminderRow(kind, { enabled: false });
-        wx.showToast({ title: error.errMsg || "无法打开订阅授权", icon: "none" });
+        const errMsg = String((error && error.errMsg) || "无法打开订阅授权");
+        try {
+          if (wx.getAccountInfoSync) {
+            const account = wx.getAccountInfoSync();
+            console.warn(
+              "[reminders] subscribe failed",
+              account && account.miniProgram ? account.miniProgram.appId : "",
+              item.templateId,
+              errMsg
+            );
+          }
+        } catch (logError) {
+          // 日志失败不影响用户提示。
+        }
+        wx.showModal({
+          title: "订阅没有打开",
+          content:
+            errMsg.indexOf("No template data") >= 0
+              ? "开发者工具可能不支持真实订阅弹窗。请用真机预览再试；如果仍失败，检查模板 ID 是否属于当前小程序。"
+              : errMsg,
+          showCancel: false
+        });
       }
     });
   },
