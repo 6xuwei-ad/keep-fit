@@ -196,6 +196,8 @@ WECHAT_MINIPROGRAM_STATE=formal
 | 周报 | 测评报告查看提醒 | `thing18` 报告名称 / `time8` 测评时间 / `thing7` 温馨提示 |
 | 连续记录 | 签到提醒 | `thing1` 活动名称 / `time3` 签到时间 / `thing8` 温馨提示 |
 
+> 模板 ID 请从「我的模板」详情页复制，或调用 `GET https://api.weixin.qq.com/wxaapi/newtmpl/gettemplate?access_token=...` 读取 `priTmplId`。不要从截图手抄：`l` / `1`、`I` / `l`、`0` / `O` 很容易错，错一个字符就会报 `No template data return`。
+
 5. 重启 API，启动日志出现：
 
 ```text
