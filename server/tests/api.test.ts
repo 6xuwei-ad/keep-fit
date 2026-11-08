@@ -704,6 +704,100 @@ test("周报：自然周口径、连续记录与未来周校验", async (t) => {
   assert.equal(((await invalid.json()) as { code: string }).code, "INVALID_WEEK");
 });
 
+test("提醒：开关、授权额度与模板校验", async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), "shike-reminder-api-"));
+  const config = loadConfig({
+    dataDir: dir,
+    uploadDir: path.join(dir, "uploads"),
+    publicDir: path.join(process.cwd(), "public"),
+    wechatAppId: "wx_test_app",
+    wechatSecret: "test-secret",
+    wechatEnabled: true,
+    reminderTemplates: {
+      lunch: "tmpl-lunch",
+      dinner: "tmpl-dinner",
+      weekly: "tmpl-weekly",
+      streak: ""
+    }
+  });
+  const store = new Store(path.join(dir, "test.db"));
+  const app = createApp({ config, store });
+  const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const port = (server.address() as AddressInfo).port;
+  const base = `http://127.0.0.1:${port}`;
+
+  t.after(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    store.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const device = "test-device-reminder";
+  const headers = { "x-device-id": device, "Content-Type": "application/json" };
+
+  const initial = await fetch(`${base}/api/reminders`, { headers });
+  assert.equal(initial.status, 200);
+  const initialBody = (await initial.json()) as {
+    capability: { templatesConfigured: boolean; canSend: boolean; reason: string };
+    reminders: Array<{ kind: string; enabled: boolean; remaining: number }>;
+  };
+  assert.equal(initialBody.capability.templatesConfigured, true);
+  assert.equal(initialBody.capability.canSend, false);
+  assert.equal(initialBody.reminders.length, 4);
+
+  const enabled = await fetch(`${base}/api/reminders/lunch`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ enabled: true })
+  });
+  assert.equal(enabled.status, 200);
+  const enabledBody = (await enabled.json()) as {
+    reminders: Array<{ kind: string; enabled: boolean }>;
+  };
+  assert.equal(enabledBody.reminders.find((item) => item.kind === "lunch")?.enabled, true);
+
+  const granted = await fetch(`${base}/api/reminders/lunch/grant`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({})
+  });
+  assert.equal(granted.status, 201);
+  const grantedBody = (await granted.json()) as {
+    reminders: Array<{ kind: string; remaining: number }>;
+  };
+  assert.equal(grantedBody.reminders.find((item) => item.kind === "lunch")?.remaining, 1);
+
+  const missingTemplate = await fetch(`${base}/api/reminders/streak/grant`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({})
+  });
+  assert.equal(missingTemplate.status, 400);
+  assert.equal(
+    ((await missingTemplate.json()) as { code: string }).code,
+    "REMINDER_TEMPLATE_MISSING"
+  );
+
+  const invalidKind = await fetch(`${base}/api/reminders/water`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ enabled: true })
+  });
+  assert.equal(invalidKind.status, 400);
+  assert.equal(
+    ((await invalidKind.json()) as { code: string }).code,
+    "INVALID_REMINDER_KIND"
+  );
+
+  const session = signSession("wx_test_identity", config.sessionSecret, 600);
+  const loggedIn = await fetch(`${base}/api/reminders`, {
+    headers: { Authorization: `Bearer ${session.token}` }
+  });
+  const loggedInBody = (await loggedIn.json()) as { capability: { canSend: boolean } };
+  assert.equal(loggedInBody.capability.canSend, true);
+});
+
 test("缺少设备标识时拒绝访问个人数据", async (t) => {
   const dir = await mkdtemp(path.join(tmpdir(), "shike-test-device-"));
   const config = loadConfig({

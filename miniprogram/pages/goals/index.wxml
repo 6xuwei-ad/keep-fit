@@ -116,6 +116,48 @@
     </view>
   </view>
 
+  <view wx:if="{{reminders.length > 0}}" class="card reminder-card">
+    <view class="card-head">
+      <view>
+        <text class="eyebrow">REMINDERS</text>
+        <view class="section-title">提醒</view>
+      </view>
+      <text class="reminder-badge {{reminderCapability.canSend ? 'on' : ''}}">
+        {{reminderCapability.canSend ? '可用' : '未启用'}}
+      </text>
+    </view>
+    <view class="reminder-intro">只在没记录时提醒，不发广告。微信规定每次授权只能收到一条，收到后可以在这一行续订。</view>
+
+    <view wx:for="{{reminders}}" wx:key="kind" class="reminder-row">
+      <view class="reminder-copy">
+        <view class="reminder-title-line">
+          <text class="reminder-title">{{item.label}}</text>
+          <text class="reminder-time">{{item.timeLabel}}</text>
+        </view>
+        <text class="reminder-desc">{{item.description}}</text>
+        <text wx:if="{{item.enabled}}" class="reminder-grant {{item.remaining > 0 ? 'ready' : 'empty'}}">{{item.grantText}}</text>
+      </view>
+      <view class="reminder-actions">
+        <button
+          wx:if="{{item.enabled && item.remaining == 0}}"
+          class="reminder-renew"
+          data-kind="{{item.kind}}"
+          bindtap="onReminderRenew"
+        >续订</button>
+        <switch
+          checked="{{item.enabled}}"
+          data-kind="{{item.kind}}"
+          bindchange="onReminderSwitch"
+          color="#1B4B37"
+          disabled="{{reminderBusy != ''}}"
+        />
+      </view>
+    </view>
+
+    <view wx:if="{{!reminderCapability.canSend}}" class="reminder-hint">{{reminderCapability.reason}}</view>
+    <view wx:else class="reminder-hint">{{reminderCapability.notice}}</view>
+  </view>
+
   <view class="card goal-card">
     <view class="card-head">
       <view>

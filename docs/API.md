@@ -375,6 +375,79 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 ---
 
+## 提醒与微信订阅消息
+
+提醒发送依赖微信订阅消息：服务端必须有 `WECHAT_APPID` / `WECHAT_SECRET`，并且至少配置一个模板 ID。模板申请与字段要求见 [WECHAT.md](WECHAT.md)。
+
+### `GET /api/reminders`
+
+返回当前身份的提醒开关、授权剩余次数和能力说明。
+
+```json
+{
+  "capability": {
+    "wechatEnabled": true,
+    "templatesConfigured": true,
+    "canSend": true,
+    "reason": "",
+    "notice": "只在没记录时提醒。微信规定每次授权只能收到一条，收到后可以在这里续订。"
+  },
+  "reminders": [
+    {
+      "kind": "lunch",
+      "label": "午餐提醒",
+      "description": "没记录午餐时提醒",
+      "time": "12:30",
+      "timeLabel": "每天 12:30",
+      "enabled": true,
+      "remaining": 1,
+      "lastSentAt": null,
+      "templateId": "TmplId...",
+      "templateReady": true
+    }
+  ]
+}
+```
+
+`kind` 固定四种：
+
+| kind | 时间 | 条件 |
+| --- | --- | --- |
+| `lunch` | 每天 12:30 | 当天还没有 `mealType: "lunch"` 的记录 |
+| `dinner` | 每天 19:30 | 当天还没有 `mealType: "dinner"` 的记录 |
+| `weekly` | 周日 20:00 | 本周至少有一条记录 |
+| `streak` | 每天 20:30 | 当天没有记录，且当前连续记录 ≥ 3 天 |
+
+- 时间按 `Asia/Shanghai`，发送窗口为计划时间后 20 分钟。
+- `remaining` 是服务端记录的“可发送额度”。微信一次性订阅每接受一次只能发一条，发送成功扣 1 次。
+- `canSend` 为 `false` 时，`reason` 会说明是未配置微信登录、未配置模板，还是当前是设备模式。
+- `templateId` 为空或 `templateReady: false` 表示这一项没有配置模板，客户端不应发起授权。
+
+### `PUT /api/reminders/:kind`
+
+```json
+{ "enabled": true }
+```
+
+只改开关，不消耗授权额度。成功返回完整的 `GET /api/reminders` 结构。
+
+### `POST /api/reminders/:kind/grant`
+
+小程序在 `wx.requestSubscribeMessage` 返回 `accept` 后调用，给这一项记一次可发送额度，并自动把开关打开。
+
+```json
+{}
+```
+
+- 成功：`201`，返回完整提醒结构。
+- 该 `kind` 没有配置模板：`400 REMINDER_TEMPLATE_MISSING`。
+- `kind` 不合法：`400 INVALID_REMINDER_KIND`。
+- 额度最多累计 5 次；用户拒绝授权（微信 `43101`）时服务端会清空额度，等用户重新授权。
+
+> 微信的规则是“一次授权一条消息”，不是普通推送。目标页会在每次收到提醒后显示“授权已用完”，用户需要点“续订”再授权一次。
+
+---
+
 ## 食物库
 
 ### `GET /api/foods?q=鸡胸`

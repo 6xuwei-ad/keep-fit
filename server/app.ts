@@ -18,6 +18,7 @@ import type {
   MealType,
   NutritionFacts,
   Profile,
+  ReminderKind,
   Sex,
   Targets,
   TargetsMode,
@@ -42,6 +43,12 @@ import { signSession, verifySession } from "./lib/session.ts";
 import { FOOD_BY_ID, searchFoods, type FoodRecord } from "./data/foods.ts";
 import { assembleAnalysis } from "./services/analysis.ts";
 import { itemsTotal, makeFoodItem } from "./services/items.ts";
+import {
+  REMINDER_KINDS,
+  buildRemindersResponse,
+  grantReminder,
+  updateReminderSetting
+} from "./services/reminders.ts";
 import { buildWeeklyReportFor } from "./services/report.ts";
 import { buildDemoRecognition, recognizeFood } from "./services/vision.ts";
 
@@ -140,6 +147,10 @@ const weightSchema = z.object({
     .optional()
 });
 
+const reminderUpdateSchema = z.object({
+  enabled: z.boolean()
+});
+
 const portionsSchema = z
   .array(
     z.object({
@@ -200,6 +211,13 @@ function parseWeightDate(value: string | undefined): string {
     throw new AppError(400, "体重日期不能晚于今天", "WEIGHT_FUTURE");
   }
   return date;
+}
+
+function parseReminderKind(value: string): ReminderKind {
+  if (!(REMINDER_KINDS as readonly string[]).includes(value)) {
+    throw new AppError(400, "不支持的提醒类型", "INVALID_REMINDER_KIND");
+  }
+  return value as ReminderKind;
 }
 
 function asyncRoute(
@@ -644,6 +662,43 @@ export function createApp({ config, store }: CreateAppOptions) {
       const requested =
         typeof req.query.weekStart === "string" ? req.query.weekStart : null;
       res.json(buildWeeklyReportFor(store, deviceId, requested));
+    })
+  );
+
+  app.get(
+    "/api/reminders",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      res.json(buildRemindersResponse(config, store, deviceId));
+    })
+  );
+
+  app.put(
+    "/api/reminders/:kind",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const kind = parseReminderKind(String(req.params.kind ?? ""));
+      const parsed = reminderUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new AppError(400, "提醒开关参数不完整", "INVALID_REMINDER", parsed.error.issues);
+      }
+      res.json(updateReminderSetting(config, store, deviceId, kind, parsed.data.enabled));
+    })
+  );
+
+  app.post(
+    "/api/reminders/:kind/grant",
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      const kind = parseReminderKind(String(req.params.kind ?? ""));
+      if (!config.reminderTemplates[kind]) {
+        throw new AppError(
+          400,
+          "该提醒还没有配置订阅消息模板",
+          "REMINDER_TEMPLATE_MISSING"
+        );
+      }
+      res.status(201).json(grantReminder(config, store, deviceId, kind));
     })
   );
 

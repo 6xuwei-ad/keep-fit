@@ -55,6 +55,18 @@ function weightView(weights) {
   };
 }
 
+function formatReminders(data) {
+  return ((data && data.reminders) || []).map((item) =>
+    Object.assign({}, item, {
+      grantText: item.enabled
+        ? item.remaining > 0
+          ? `剩余 ${item.remaining} 次`
+          : "授权已用完"
+        : "未开启"
+    })
+  );
+}
+
 function goalOptions(selected, body) {
   const complete = body && bodyUtil.isComplete(body);
   return GOAL_OPTIONS.map((goal) => {
@@ -92,7 +104,16 @@ Page({
     targetsMode: "manual",
     activityOptions: bodyUtil.ACTIVITY_OPTIONS,
     weightLatest: "",
-    weightSummary: "记录第一笔体重"
+    weightSummary: "记录第一笔体重",
+    reminders: [],
+    reminderCapability: {
+      wechatEnabled: false,
+      templatesConfigured: false,
+      canSend: false,
+      reason: "",
+      notice: ""
+    },
+    reminderBusy: ""
   },
 
   onLoad() {
@@ -135,13 +156,15 @@ Page({
         Promise.all([
           api.getProfile(),
           api.getMeta(),
-          api.getWeights().catch(() => null)
+          api.getWeights().catch(() => null),
+          api.getReminders().catch(() => null)
         ])
       )
       .then((results) => {
         const profile = results[0].profile;
         const meta = results[1];
         const weights = results[2] || {};
+        const reminders = results[3] || null;
         app.globalData.profile = profile;
         const targets = profile.targets || DEFAULT_TARGETS;
         const body = {
@@ -183,7 +206,17 @@ Page({
           tdee: profile.tdee || (metrics ? metrics.tdee : 0),
           targetsMode: profile.targetsMode === "auto" ? "auto" : "manual",
           weightLatest: weight.weightLatest,
-          weightSummary: weight.weightSummary
+          weightSummary: weight.weightSummary,
+          reminders: reminders ? formatReminders(reminders) : [],
+          reminderCapability: reminders
+            ? reminders.capability
+            : {
+                wechatEnabled: false,
+                templatesConfigured: false,
+                canSend: false,
+                reason: "提醒功能暂时不可用",
+                notice: ""
+              }
         });
         this._loaded = true;
         this._dirty = false;
@@ -256,6 +289,140 @@ Page({
 
   goWeight() {
     wx.navigateTo({ url: "/pages/weight/index" });
+  },
+
+  applyReminders(data) {
+    if (!data) return;
+    this.setData({
+      reminders: formatReminders(data),
+      reminderCapability: data.capability || this.data.reminderCapability
+    });
+  },
+
+  updateReminderRow(kind, patch) {
+    this.setData({
+      reminders: this.data.reminders.map((item) =>
+        item.kind === kind ? Object.assign({}, item, patch) : item
+      )
+    });
+  },
+
+  onReminderSwitch(event) {
+    const kind = event.currentTarget.dataset.kind;
+    const enabled = Boolean(event.detail.value);
+    if (this.data.reminderBusy) {
+      this.updateReminderRow(kind, { enabled: !enabled });
+      return;
+    }
+
+    if (!enabled) {
+      this.setData({ reminderBusy: kind });
+      api
+        .updateReminder(kind, false)
+        .then((data) => {
+          this.applyReminders(data);
+          this.setData({ reminderBusy: "" });
+          wx.showToast({ title: "已关闭提醒", icon: "none" });
+        })
+        .catch((error) => {
+          this.setData({ reminderBusy: "" });
+          this.updateReminderRow(kind, { enabled: true });
+          wx.showToast({ title: error.message || "关闭失败", icon: "none" });
+        });
+      return;
+    }
+
+    const item = this.data.reminders.find((entry) => entry.kind === kind);
+    if (
+      item &&
+      item.remaining > 0 &&
+      item.templateReady &&
+      this.data.reminderCapability.canSend
+    ) {
+      this.setData({ reminderBusy: kind });
+      api
+        .updateReminder(kind, true)
+        .then((data) => {
+          this.applyReminders(data);
+          this.setData({ reminderBusy: "" });
+          wx.showToast({ title: "已开启提醒", icon: "none" });
+        })
+        .catch((error) => {
+          this.setData({ reminderBusy: "" });
+          this.updateReminderRow(kind, { enabled: false });
+          wx.showToast({ title: error.message || "开启失败", icon: "none" });
+        });
+      return;
+    }
+
+    this.requestReminder(kind, true);
+  },
+
+  requestReminder(kind, enableAfter) {
+    const item = this.data.reminders.find((entry) => entry.kind === kind);
+    if (!item) return;
+
+    if (!this.data.reminderCapability.canSend) {
+      if (enableAfter) this.updateReminderRow(kind, { enabled: false });
+      wx.showToast({
+        title: this.data.reminderCapability.reason || "提醒暂不可用",
+        icon: "none"
+      });
+      return;
+    }
+    if (!wx.requestSubscribeMessage) {
+      if (enableAfter) this.updateReminderRow(kind, { enabled: false });
+      wx.showToast({ title: "当前微信版本不支持订阅提醒", icon: "none" });
+      return;
+    }
+    if (!item.templateId) {
+      if (enableAfter) this.updateReminderRow(kind, { enabled: false });
+      wx.showToast({ title: "服务端未配置这个提醒的模板", icon: "none" });
+      return;
+    }
+
+    this.setData({ reminderBusy: kind });
+    wx.requestSubscribeMessage({
+      tmplIds: [item.templateId],
+      success: (result) => {
+        const status = result && result[item.templateId];
+        if (status !== "accept") {
+          this.setData({ reminderBusy: "" });
+          if (enableAfter) this.updateReminderRow(kind, { enabled: false });
+          wx.showToast({
+            title: status === "reject" ? "已取消授权" : "没有获得提醒授权",
+            icon: "none"
+          });
+          return;
+        }
+
+        api
+          .grantReminder(kind)
+          .then((data) => {
+            this.applyReminders(data);
+            this.setData({ reminderBusy: "" });
+            wx.showToast({
+              title: enableAfter ? "已开启，收到一条后需续订" : "已续订 1 次",
+              icon: "none"
+            });
+          })
+          .catch((error) => {
+            this.setData({ reminderBusy: "" });
+            if (enableAfter) this.updateReminderRow(kind, { enabled: false });
+            wx.showToast({ title: error.message || "提醒保存失败", icon: "none" });
+          });
+      },
+      fail: (error) => {
+        this.setData({ reminderBusy: "" });
+        if (enableAfter) this.updateReminderRow(kind, { enabled: false });
+        wx.showToast({ title: error.errMsg || "无法打开订阅授权", icon: "none" });
+      }
+    });
+  },
+
+  onReminderRenew(event) {
+    if (this.data.reminderBusy) return;
+    this.requestReminder(event.currentTarget.dataset.kind, false);
   },
 
   chooseGoal(event) {

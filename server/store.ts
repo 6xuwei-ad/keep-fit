@@ -16,6 +16,7 @@ import type {
   MealType,
   NutritionFacts,
   Profile,
+  ReminderKind,
   Sex,
   Targets,
   TargetsMode,
@@ -127,6 +128,41 @@ interface AliasRow {
   per100g_json: string;
   portion_hint: string;
   updated_at: string;
+}
+
+interface ReminderSettingsRow {
+  device_id: string;
+  lunch_enabled: number;
+  dinner_enabled: number;
+  weekly_enabled: number;
+  streak_enabled: number;
+  updated_at: string;
+}
+
+interface ReminderGrantRow {
+  device_id: string;
+  kind: string;
+  remaining: number;
+  last_sent_on: string | null;
+  last_sent_at: string | null;
+  last_accepted_at: string | null;
+  last_attempt_on: string | null;
+  last_attempt_at: string | null;
+}
+
+export interface ReminderSettings extends Record<ReminderKind, boolean> {
+  deviceId: string;
+  updatedAt: string;
+}
+
+export interface ReminderGrant {
+  kind: ReminderKind;
+  remaining: number;
+  lastSentOn: string | null;
+  lastSentAt: string | null;
+  lastAcceptedAt: string | null;
+  lastAttemptOn: string | null;
+  lastAttemptAt: string | null;
 }
 
 /** 用户确认过的叫法 → 食物快照，用于下次识别时优先匹配。 */
@@ -265,6 +301,29 @@ function mapAlias(row: AliasRow): FoodAlias {
     category: row.category as FoodCategory,
     per100g: JSON.parse(row.per100g_json) as NutritionFacts,
     portionHint: row.portion_hint
+  };
+}
+
+function mapReminderSettings(row: ReminderSettingsRow): ReminderSettings {
+  return {
+    deviceId: row.device_id,
+    lunch: Boolean(row.lunch_enabled),
+    dinner: Boolean(row.dinner_enabled),
+    weekly: Boolean(row.weekly_enabled),
+    streak: Boolean(row.streak_enabled),
+    updatedAt: row.updated_at
+  };
+}
+
+function mapReminderGrant(row: ReminderGrantRow): ReminderGrant {
+  return {
+    kind: row.kind as ReminderKind,
+    remaining: Number(row.remaining),
+    lastSentOn: row.last_sent_on,
+    lastSentAt: row.last_sent_at,
+    lastAcceptedAt: row.last_accepted_at,
+    lastAttemptOn: row.last_attempt_on,
+    lastAttemptAt: row.last_attempt_at
   };
 }
 
@@ -416,6 +475,29 @@ export class Store {
         portion_hint TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         PRIMARY KEY (device_id, alias),
+        FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS reminder_settings (
+        device_id TEXT PRIMARY KEY,
+        lunch_enabled INTEGER NOT NULL DEFAULT 0,
+        dinner_enabled INTEGER NOT NULL DEFAULT 0,
+        weekly_enabled INTEGER NOT NULL DEFAULT 0,
+        streak_enabled INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS reminder_grants (
+        device_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        remaining INTEGER NOT NULL DEFAULT 0,
+        last_sent_on TEXT,
+        last_sent_at TEXT,
+        last_accepted_at TEXT,
+        last_attempt_on TEXT,
+        last_attempt_at TEXT,
+        PRIMARY KEY (device_id, kind),
         FOREIGN KEY (device_id) REFERENCES profiles(device_id) ON DELETE CASCADE
       );
 
@@ -958,6 +1040,140 @@ export class Store {
       ...(targets ? { targets } : {})
     });
     return { profile, targetsUpdated: auto };
+  }
+
+  getReminderSettings(deviceId: string): ReminderSettings {
+    this.ensureProfile(deviceId);
+    const existing = this.db
+      .prepare("SELECT * FROM reminder_settings WHERE device_id = ?")
+      .get(deviceId) as ReminderSettingsRow | undefined;
+    if (existing) return mapReminderSettings(existing);
+
+    this.db
+      .prepare(
+        `INSERT INTO reminder_settings
+          (device_id, lunch_enabled, dinner_enabled, weekly_enabled, streak_enabled, updated_at)
+         VALUES (?, 0, 0, 0, 0, ?)
+         ON CONFLICT(device_id) DO NOTHING`
+      )
+      .run(deviceId, new Date().toISOString());
+    return mapReminderSettings(
+      this.db
+        .prepare("SELECT * FROM reminder_settings WHERE device_id = ?")
+        .get(deviceId) as unknown as ReminderSettingsRow
+    );
+  }
+
+  updateReminderSettings(
+    deviceId: string,
+    patch: Partial<Record<ReminderKind, boolean>>
+  ): ReminderSettings {
+    const current = this.getReminderSettings(deviceId);
+    const next = { ...current, ...patch };
+    this.db
+      .prepare(
+        `UPDATE reminder_settings
+         SET lunch_enabled = ?, dinner_enabled = ?, weekly_enabled = ?, streak_enabled = ?,
+             updated_at = ?
+         WHERE device_id = ?`
+      )
+      .run(
+        next.lunch ? 1 : 0,
+        next.dinner ? 1 : 0,
+        next.weekly ? 1 : 0,
+        next.streak ? 1 : 0,
+        new Date().toISOString(),
+        deviceId
+      );
+    return this.getReminderSettings(deviceId);
+  }
+
+  /** 定时任务只遍历至少开启一种提醒的身份。 */
+  listReminderDevices(): Array<{ deviceId: string; settings: ReminderSettings }> {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM reminder_settings
+         WHERE lunch_enabled = 1 OR dinner_enabled = 1
+            OR weekly_enabled = 1 OR streak_enabled = 1`
+      )
+      .all() as unknown as ReminderSettingsRow[];
+    return rows.map((row) => ({
+      deviceId: row.device_id,
+      settings: mapReminderSettings(row)
+    }));
+  }
+
+  listReminderGrants(deviceId: string): ReminderGrant[] {
+    const rows = this.db
+      .prepare("SELECT * FROM reminder_grants WHERE device_id = ?")
+      .all(deviceId) as unknown as ReminderGrantRow[];
+    return rows.map(mapReminderGrant);
+  }
+
+  getReminderGrant(deviceId: string, kind: ReminderKind): ReminderGrant | null {
+    const row = this.db
+      .prepare("SELECT * FROM reminder_grants WHERE device_id = ? AND kind = ?")
+      .get(deviceId, kind) as ReminderGrantRow | undefined;
+    return row ? mapReminderGrant(row) : null;
+  }
+
+  /**
+   * 微信一次性订阅：用户接受一次，服务端记一次可发送额度。
+   * 最多累计 5 次，避免用户反复点击把额度堆得过高。
+   */
+  grantReminder(deviceId: string, kind: ReminderKind): ReminderGrant {
+    this.ensureProfile(deviceId);
+    const existing = this.getReminderGrant(deviceId, kind);
+    const remaining = Math.min((existing?.remaining ?? 0) + 1, 5);
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `INSERT INTO reminder_grants
+          (device_id, kind, remaining, last_accepted_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(device_id, kind) DO UPDATE SET
+           remaining = excluded.remaining,
+           last_accepted_at = excluded.last_accepted_at`
+      )
+      .run(deviceId, kind, remaining, now);
+    return this.getReminderGrant(deviceId, kind)!;
+  }
+
+  /** 发送成功后扣一次额度，并记录发送日期，保证同一种提醒一天最多一次。 */
+  consumeReminderGrant(deviceId: string, kind: ReminderKind, date: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE reminder_grants
+         SET remaining = CASE WHEN remaining > 0 THEN remaining - 1 ELSE 0 END,
+             last_sent_on = ?, last_sent_at = ?, last_attempt_on = ?, last_attempt_at = ?
+         WHERE device_id = ? AND kind = ?`
+      )
+      .run(date, now, date, now, deviceId, kind);
+  }
+
+  /** 发送失败也记一次尝试，避免同一分钟窗口里反复请求微信接口。 */
+  markReminderAttempt(deviceId: string, kind: ReminderKind, date: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE reminder_grants
+         SET last_attempt_on = ?, last_attempt_at = ?
+         WHERE device_id = ? AND kind = ?`
+      )
+      .run(date, now, deviceId, kind);
+  }
+
+  /** 用户拒绝或授权失效时清空额度，避免一直重试。 */
+  clearReminderGrant(deviceId: string, kind: ReminderKind, date: string): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE reminder_grants
+         SET remaining = 0, last_attempt_on = ?, last_attempt_at = ?
+         WHERE device_id = ? AND kind = ?`
+      )
+      .run(date, now, deviceId, kind);
   }
 
   /** 最近吃过的食物，按食物去重，用于食物搜索的快捷入口。 */

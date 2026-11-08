@@ -144,6 +144,8 @@ flowchart LR
 │  ├─ services/aliases.ts        # 用户别名归一化与识别前应用
 │  ├─ services/analysis.ts       # 评分与建议组装
 │  ├─ services/report.ts         # 周报数据装配（按天汇总 + 区间餐次）
+│  ├─ services/reminders.ts      # 提醒开关、授权额度、定时发送
+│  ├─ services/wechat.ts         # access_token 缓存与订阅消息发送
 │  ├─ lib/image.ts               # 图片魔数、保存
 │  ├─ lib/session.ts             # HMAC 会话
 │  └─ tests/                     # node:test
@@ -193,7 +195,7 @@ ready()              等待微信登录 / 设备 ID 初始化
 | `review` | 识别结果、克数编辑、剩饭比例、份量参照、换一种、低置信度提示、保存 |
 | `food-search` | 搜索内置库 + 我的食物、最近吃过、自定义食物 CRUD、加回/替换 review |
 | `journal` | 按天查看、删除、再来一份、存为常用餐 |
-| `goals` | 昵称、目标、身体数据、自动/手动目标、体重入口 |
+| `goals` | 昵称、目标、身体数据、自动/手动目标、体重入口、订阅提醒授权 |
 | `weight` | 记录/修正体重、12 周折线、周平均、删除记录 |
 | `report` | 7 天热量/蛋白质柱状图、达标天数、连续记录、上周对比、周总结、分享 |
 
@@ -269,6 +271,15 @@ review 页面保存 `baseGrams`（100% 基准）与当前 `grams`，因此：
 - 分享使用 `onShareAppMessage`，标题只包含记录天数和平均热量，路径回首页；
 - 历史周沿用当前目标，因为目前没有目标版本表。
 
+### 5.9 订阅提醒
+
+- 目标页的四行提醒通过 `wx.requestSubscribeMessage` 逐项授权，每次只传一个模板 ID；
+- 授权成功后客户端调用 `/api/reminders/:kind/grant`，服务端记一次可发送额度并打开开关；
+- 客户端不保存额度、模板 ID 和发送时间，全部以服务端返回为准；
+- 微信规定一次授权只能收一条，剩余次数用完后显示“续订”；
+- 设备模式或未配置模板时，开关仍可见，但会明确提示不可用原因；
+- 授权弹窗必须由用户点击触发，不能在 `onShow` 或定时器里自动调用。
+
 ---
 
 ## 6. 后端架构
@@ -286,13 +297,16 @@ app.ts
   └─ 路由
        ├─ analyze → image 魔数 → saveImage → vision → analysis
        ├─ meals / templates → makeFoodItem → itemsTotal → Store.insertMeal
-       └─ reports/weekly → Store 区间汇总 → shared/weekly
+       ├─ reports/weekly → Store 区间汇总 → shared/weekly
+       └─ reminders → Store 设置/额度 → 微信订阅消息
   ↓
 services/                  纯业务
   ├─ vision.ts             外部模型边界
   ├─ items.ts              结果归一化
   ├─ analysis.ts           组装 + 评分 + 建议
-  └─ report.ts             周报数据装配
+  ├─ report.ts             周报数据装配
+  ├─ reminders.ts          提醒调度与额度
+  └─ wechat.ts             access_token / 订阅消息
   ↓
 store.ts                   SQLite，唯一数据访问入口
 ```
@@ -464,7 +478,40 @@ sequenceDiagram
 - 没有记录的日子也返回，客户端不需要补位；
 - 历史周使用当前目标，目标版本化留到以后。
 
-### 7.6 失败与降级矩阵
+### 7.6 订阅提醒
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 用户
+  participant W as 小程序
+  participant X as 微信
+  participant A as Express
+  participant D as SQLite
+
+  U->>W: 目标页打开「午餐提醒」
+  W->>X: wx.requestSubscribeMessage([模板ID])
+  X-->>U: 订阅授权弹窗
+  U-->>X: 允许
+  W->>A: POST /api/reminders/lunch/grant
+  A->>D: remaining += 1，lunch_enabled = 1
+  A-->>W: 完整提醒结构
+  Note over A: 调度器每分钟检查
+  A->>D: 读取已开启提醒 + 额度
+  A->>D: 查询当天餐次 / 连续记录 / 周报
+  A->>X: subscribeMessage.send
+  X-->>A: errcode = 0
+  A->>D: remaining -= 1，last_sent_on = 今天
+```
+
+- 每项提醒每天最多一次；发送窗口是计划时间后 20 分钟；
+- 发送失败记 `last_attempt_on`，当天不重试，避免一分钟打一次微信接口；
+- 微信返回 `43101` 表示用户拒绝，清空额度并等用户重新授权；
+- 调度器只在 `server/index.ts` 启动，`createApp` 和测试不会自动起定时器；
+- 调度器是进程内单例；多实例部署前要加分布式锁或改成单独的 worker，否则可能重复发送；
+- 日志只打印 `kind` 与 errcode，不打印 openid 或 access_token。
+
+### 7.7 失败与降级矩阵
 
 | 情况 | 行为 | 用户看到 |
 | --- | --- | --- |
@@ -728,6 +775,26 @@ erDiagram
     TEXT portion_hint
     TEXT updated_at
   }
+
+  REMINDER_SETTINGS {
+    TEXT device_id PK FK
+    INTEGER lunch_enabled
+    INTEGER dinner_enabled
+    INTEGER weekly_enabled
+    INTEGER streak_enabled
+    TEXT updated_at
+  }
+
+  REMINDER_GRANTS {
+    TEXT device_id PK FK
+    TEXT kind PK
+    INTEGER remaining
+    TEXT last_sent_on
+    TEXT last_sent_at
+    TEXT last_accepted_at
+    TEXT last_attempt_on
+    TEXT last_attempt_at
+  }
 ```
 
 设计说明：
@@ -738,6 +805,7 @@ erDiagram
 - `weight_logs` 一天一条（`UNIQUE(device_id, date)`），是体重的唯一事实来源；`profiles.weight_kg` 只是最新记录的快照，用于 BMR/TDEE 和目标计算。
 - `custom_foods` 存用户自己的食物（每 100g 营养 + 份量），`(device_id, name)` 唯一；搜索时排在内置库前面。
 - `food_aliases` 存“识别叫法 → 食物快照”，主键 `(device_id, alias)`；只影响当前身份，最多 200 条，超出淘汰最久未更新。
+- `reminder_settings` 按身份保存四个开关，默认全关；`reminder_grants` 按 `(device_id, kind)` 保存可发送额度和最近发送/尝试日期。
 - `date` 是查询键（YYYY-MM-DD），`eaten_at` 是完整时间；服务端默认使用上海时区。
 - `source` 区分 `database` / `custom` / `ai`；`engine` 记录模型名或「演示引擎」。
 
@@ -757,6 +825,9 @@ GET    /api/weights
 POST   /api/weights
 DELETE /api/weights/:id
 GET    /api/reports/weekly?weekStart=YYYY-MM-DD
+GET    /api/reminders
+PUT    /api/reminders/:kind
+POST   /api/reminders/:kind/grant
 GET    /api/foods?q=
 GET    /api/foods?recent=1
 GET    /api/custom-foods
@@ -823,7 +894,7 @@ x-device-id: 8d1f0c2e-...
 ## 14. 测试
 
 ```text
-npm test          24 个测试
+npm test          29 个测试
 npm run typecheck  server/shared 类型检查
 npm run check:mini 小程序 JSON / JS / WXSS / 页面文件 / tabBar 图标
 npm run check     以上三项
@@ -837,6 +908,7 @@ npm run check     以上三项
 - 体重按自然周聚合、28 天变化与 API 同步；
 - 周报 7 天占位、热量/蛋白质达标、连续记录、上周对比与总结；
 - 周报接口的自然周归一、未来周校验与设备隔离；
+- 提醒开关、授权额度、发送窗口、失败不重试与 43101 清额度；
 - 视觉模型 JSON 解析；
 - 会话签名、篡改、过期；
 - 完整 API 流程：识别 → 保存 → 模板 → 复制 → 删除 → 体重 → 自定义食物 → 别名；
@@ -906,9 +978,9 @@ docker run --rm -p 8787:8787 \
 
 ### 16.4 体验
 
-- 订阅消息提醒；
 - 周报目标版本化（历史周使用当时目标，而不是当前目标）；
-- 营养标签 OCR（比商品条码更适合中国零食/饮料）。
+- 营养标签 OCR（比商品条码更适合中国零食/饮料）；
+- 长期订阅消息（如果未来类目符合微信要求，可替代一次性授权）。
 
 ---
 
@@ -918,5 +990,6 @@ docker run --rm -p 8787:8787 \
 - 热量是估算，不替代医疗或营养处方。
 - 设备模式无法跨设备同步；微信登录后也不会自动归并旧设备数据。
 - 删除餐次不清理图片文件。
+- 微信订阅消息受“一次授权一条”限制，四条提醒需要用户分别授权/续订。
 - 单实例 SQLite，不适合多实例横向扩展。
 - 小程序审核需要真实 AppID、隐私保护指引与合法域名。

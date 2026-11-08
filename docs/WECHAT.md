@@ -25,6 +25,7 @@
 | 份量 | 100/75/50/25% 剩饭折算、可点击的份量参照 |
 | 下拉刷新 | 首页、日记、目标、周报 |
 | 周报 | 7 天热量/蛋白质柱状图、达标天数、连续记录、上周对比、周总结 |
+| 订阅提醒 | 午餐/晚餐/周报/断签，目标页按项授权、续订与开关 |
 | 分享 | 分享卡片回到首页；周报分享不含体重和照片 |
 
 **验收状态：** 组件/页面脚本加载、WXML 结构、WXSS 语法、营养与建议一致性均通过自动检查；还需要在微信开发者工具中做一次真实编译与真机预览。常用错误见第 8 节。
@@ -149,6 +150,61 @@ SESSION_TTL_SECONDS=2592000
 - 服务端返回 `401 SESSION_INVALID`；
 - `utils/api.js` 会清除 token 并用设备身份重试一次；
 - 下次进入小程序会重新 `wx.login`。
+
+### 4.5 订阅消息提醒
+
+食材记录类小程序只能用**微信订阅消息**，不能用普通 push。流程是：
+
+```text
+目标页打开开关
+  → wx.requestSubscribeMessage({ tmplIds: [模板ID] })
+  → 用户点“允许”
+  → POST /api/reminders/:kind/grant
+  → 服务端记一次可发送额度
+  → 到点且当天没记录时，服务端调用 subscribeMessage.send
+```
+
+**微信公众平台配置：**
+
+1. 登录 [微信公众平台](https://mp.weixin.qq.com/) → 功能 → 订阅消息。
+2. 选用或申请“饮食记录提醒”类模板。四条提醒可以各用一个模板，也可以共用同一套字段。
+3. 模板字段建议保持：
+   - `thing1`：提醒事项（≤20 字）
+   - `time2`：提醒时间
+   - `thing3`：温馨提示（≤20 字）
+4. 把模板 ID 填进根目录 `.env`：
+
+```dotenv
+WECHAT_TEMPLATE_LUNCH=TmplId...
+WECHAT_TEMPLATE_DINNER=TmplId...
+WECHAT_TEMPLATE_WEEKLY=TmplId...
+WECHAT_TEMPLATE_STREAK=TmplId...
+
+# 如果你的模板字段不是 thing1/time2/thing3，用 JSON 覆盖
+WECHAT_REMINDER_FIELDS={"title":"thing1","time":"time2","note":"thing3"}
+
+# 开发版 developer / 体验版 trial / 正式版 formal
+WECHAT_MINIPROGRAM_STATE=formal
+```
+
+5. 重启 API，启动日志出现：
+
+```text
+订阅提醒 已启用
+```
+
+**一次性订阅的限制：**
+
+微信规定每次 `requestSubscribeMessage` 授权只能收到一条对应模板的消息。目标页会显示“剩余 N 次”，发送成功后扣 1 次；用完显示“授权已用完”，用户点“续订”再授权一次。
+
+这不是产品偷懒，是微信订阅消息的规则。不要把它当普通 push 每天静默发送。
+
+**调试：**
+
+- 开发者工具或体验版调试时，把 `WECHAT_MINIPROGRAM_STATE` 改成 `developer` / `trial`，否则正式版消息可能发不到开发版。
+- `wx.requestSubscribeMessage` 在 `touristappid` 下不可用，必须使用真实 AppID。
+- 服务端需要能访问 `api.weixin.qq.com`；本地开发机通常可以，部署时确认出网。
+- 模板字段长度超限、模板 ID 错误、用户未授权都会让微信返回错误；服务端日志只打印 `kind` 和 errcode，不打印 openid。
 
 ---
 

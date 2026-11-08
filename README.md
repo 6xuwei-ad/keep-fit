@@ -17,7 +17,7 @@
 | 校验 | Zod 4 | 用户输入、模型 JSON、保存请求都有运行时边界 |
 | 视觉模型 | 任意 OpenAI 兼容视觉模型 | 默认 `gpt-4.1-mini`，可换 Gemini 兼容网关、Qwen-VL 等 |
 | 图片处理 | `wx.compressImage` + 服务端魔数校验 | 上传前压缩，服务端拒绝伪装扩展名 |
-| 测试 | `node:test` | 零测试框架依赖，24 个单元/API/模型/小程序逻辑测试 |
+| 测试 | `node:test` | 零测试框架依赖，29 个单元/API/模型/小程序逻辑测试 |
 
 ---
 
@@ -35,6 +35,7 @@
 - **目标可调**：减脂 / 维持 / 增肌三套推荐值；填写性别、年龄、身高、体重和活动量后，会按 Mifflin-St Jeor 估算 BMR/TDEE 并自动生成目标，也可以手动覆盖。
 - **体重趋势**：每周记一次体重，按自然周画 12 周折线和周平均；新体重会同步档案，自动目标模式会按新体重重算目标。只描述趋势，不评价胖瘦。
 - **本周报告**：7 天热量与蛋白质柱状图、目标线、热量/蛋白质达标天数、餐盘质量、连续记录和上周对比；规则式周总结只给三条能执行的建议，可左右切换历史周。
+- **微信订阅提醒**：午餐/晚餐没记录、周报生成、连续记录快断时提醒；目标页按项授权、开关与续订。微信规定一次授权只能收一条，页面会显示剩余次数。
 - **悬浮玻璃导航**：底部 tabBar 改为 iOS 液态玻璃风格的悬浮胶囊，带背景模糊、边缘高光和滑动选中块，并适配全面屏安全区。
 - **无模型可体验**：未配置 API Key 时自动进入演示模式，使用内置示例餐盘完整走通流程。
 - **微信登录可选**：配置 `WECHAT_APPID` / `WECHAT_SECRET` 后使用 `wx.login` + `openid` 会话；未配置时自动回落设备模式。
@@ -95,6 +96,19 @@ WECHAT_SECRET=...
 SESSION_SECRET=至少32位随机字符串
 ```
 
+微信订阅消息提醒（可选，不配置模板时目标页会显示“未配置模板”）：
+
+```dotenv
+WECHAT_TEMPLATE_LUNCH=TmplId...
+WECHAT_TEMPLATE_DINNER=TmplId...
+WECHAT_TEMPLATE_WEEKLY=TmplId...
+WECHAT_TEMPLATE_STREAK=TmplId...
+WECHAT_REMINDER_FIELDS={"title":"thing1","time":"time2","note":"thing3"}
+WECHAT_MINIPROGRAM_STATE=formal
+```
+
+申请模板、字段要求和一次性授权限制见 [docs/WECHAT.md](docs/WECHAT.md) 的「订阅消息提醒」。
+
 要求模型支持 **Chat Completions + image_url（data URI）**。服务端会自动尝试 JSON mode；如果兼容网关不支持 `response_format`，会再请求一次不带 JSON mode 的版本。
 
 任何 OpenAI 兼容的视觉服务都可以接入，只需改 `VISION_BASE_URL` 和 `VISION_MODEL`。若供应商要求额外请求头，在 `server/services/vision.ts` 的请求处扩展即可。
@@ -131,7 +145,7 @@ docker run --rm -p 8787:8787 \
 | `npm start` | 生产模式启动 API |
 | `npm run typecheck` | 检查 `server/` 与 `shared/` 的 TypeScript |
 | `npm run check:mini` | 校验小程序 JSON / JS / WXSS、页面文件和 tabBar 图标 |
-| `npm test` | 24 个营养、建议、周报、体重、视觉解析、会话、API 与小程序逻辑测试 |
+| `npm test` | 29 个营养、建议、周报、提醒、体重、视觉解析、会话、API 与小程序逻辑测试 |
 | `npm run check` | 类型检查 + 小程序检查 + 测试 |
 
 测试使用 `--test-isolation=none`，避免在受限环境里为每个测试文件创建子进程。
@@ -181,6 +195,9 @@ x-device-id: <8–64 位设备 ID>
 | POST | `/api/weights` | 记录或修正某天体重，并同步目标 |
 | DELETE | `/api/weights/:id` | 删除体重记录 |
 | GET | `/api/reports/weekly` | 指定自然周的饮食周报、连续记录与上周对比 |
+| GET | `/api/reminders` | 提醒开关、授权剩余次数与可用状态 |
+| PUT | `/api/reminders/:kind` | 开关某一项提醒 |
+| POST | `/api/reminders/:kind/grant` | 记录一次订阅授权额度 |
 | GET | `/api/foods?q=` | 搜索内置食物库 + 我的食物 |
 | GET | `/api/foods?recent=1` | 最近吃过的食物 |
 | GET | `/api/custom-foods` | 我的食物列表 |
@@ -230,8 +247,9 @@ x-device-id: <8–64 位设备 ID>
 - 设备模式下的历史记录不会自动归并到微信账号，上线前应补账号数据归并流程。
 - SQLite 适合单实例 MVP；多实例部署请迁移 PostgreSQL，并把图片移到对象存储。
 - 分析请求同步等待模型（3–8 秒）。流量上来后可改为任务队列 + WebSocket/轮询。
-- 已有体重趋势、饮食周报、连续记录、识别纠错与个人食物库；还缺少餐次编辑、订阅消息和营养标签 OCR。
+- 已有体重趋势、饮食周报、连续记录、订阅提醒、识别纠错与个人食物库；还缺少餐次编辑和营养标签 OCR。
+- 订阅提醒需要在微信公众平台申请模板并填入 `.env`，并且受微信“一次授权一条消息”的限制。
 - 周报的历史周使用当前目标计算，目标版本化尚未实现；分享卡片不含体重和照片。
 - 视觉识别对复配菜、遮挡、俯拍角度和深色酱汁仍会出错，建议持续积累「用户实际克数」反馈并建立评测集。
 
-下一步按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进：微信订阅消息与营养标签 OCR。
+下一步按 [docs/ROADMAP.md](docs/ROADMAP.md) 推进：营养标签 OCR。

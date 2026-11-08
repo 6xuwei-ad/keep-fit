@@ -14,7 +14,7 @@
     "typecheck": "tsc -p tsconfig.server.json --noEmit",
     "check:mini": "node scripts/check-miniprogram.mjs",
     "check": "npm run typecheck && npm run check:mini && npm test",
-    "test": "node --experimental-strip-types --test --test-isolation=none server/tests/nutrition.test.ts server/tests/suggestions.test.ts server/tests/weekly.test.ts server/tests/vision.test.ts server/tests/session.test.ts server/tests/miniprogram.test.ts server/tests/api.test.ts"
+    "test": "node --experimental-strip-types --test --test-isolation=none server/tests/nutrition.test.ts server/tests/suggestions.test.ts server/tests/weekly.test.ts server/tests/reminders.test.ts server/tests/vision.test.ts server/tests/session.test.ts server/tests/miniprogram.test.ts server/tests/api.test.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

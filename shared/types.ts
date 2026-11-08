@@ -327,6 +327,36 @@ export interface WeeklyReport {
   nextWeekStart: string | null;
 }
 
+/** 微信订阅消息的四种提醒，各自独立模板与授权。 */
+export type ReminderKind = "lunch" | "dinner" | "weekly" | "streak";
+
+export interface ReminderItem {
+  kind: ReminderKind;
+  label: string;
+  description: string;
+  time: string;
+  timeLabel: string;
+  enabled: boolean;
+  /** 微信一次性订阅：每接受一次，服务端记一次可发送额度。 */
+  remaining: number;
+  lastSentAt: string | null;
+  templateId: string;
+  templateReady: boolean;
+}
+
+export interface ReminderCapability {
+  wechatEnabled: boolean;
+  templatesConfigured: boolean;
+  canSend: boolean;
+  reason: string;
+  notice: string;
+}
+
+export interface RemindersResponse {
+  capability: ReminderCapability;
+  reminders: ReminderItem[];
+}
+
 export interface AppMeta {
   visionEnabled: boolean;
   demoAllowed: boolean;

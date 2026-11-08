@@ -163,6 +163,18 @@ module.exports = {
     const query = weekStart ? `?weekStart=${encodeURIComponent(weekStart)}` : "";
     return request(`/api/reports/weekly${query}`);
   },
+  getReminders() {
+    return request("/api/reminders");
+  },
+  updateReminder(kind, enabled) {
+    return request(`/api/reminders/${kind}`, {
+      method: "PUT",
+      data: { enabled }
+    });
+  },
+  grantReminder(kind) {
+    return request(`/api/reminders/${kind}/grant`, { method: "POST", data: {} });
+  },
   getCustomFoods() {
     return request("/api/custom-foods");
   },
