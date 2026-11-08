@@ -433,7 +433,7 @@ Page({
           title: "订阅没有打开",
           content:
             errMsg.indexOf("No template data") >= 0
-              ? "开发者工具可能不支持真实订阅弹窗。请用真机预览再试；如果仍失败，检查模板 ID 是否属于当前小程序。"
+              ? "微信没有返回这个模板的数据。请确认模板属于当前小程序的 AppID，并且已经添加到「我的模板」；控制台有诊断日志。"
               : errMsg,
           showCancel: false
         });
