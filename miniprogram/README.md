@@ -72,6 +72,7 @@ wx.login() → POST /api/auth/wechat → 服务端 code2Session → 签发会话
 | 目标 | `pages/goals/index` | 昵称、减脂/维持/增肌、身体数据、自动目标、体重趋势入口、订阅提醒授权 |
 | 体重趋势 | `pages/weight/index` | 每周记录、12 周折线、周平均、删除记录；新体重自动同步目标 |
 | 本周报告 | `pages/report/index` | 7 天热量/蛋白质柱状图、达标天数、连续记录、上周对比、周总结、分享 |
+| 营养标签 | `pages/label/index` | 拍营养成分表、确认每 100g 数值、填克数、记到某一餐 |
 
 底部导航使用 `custom-tab-bar/`：悬浮玻璃胶囊、选中项滑块和 iOS 安全区适配。三个 tab 页在 `onShow` 里同步选中项，页面底部预留了 214rpx 防止内容被遮挡。
 
@@ -101,7 +102,8 @@ miniprogram/
 │  ├─ journal/
 │  ├─ goals/
 │  ├─ weight/
-│  └─ report/
+│  ├─ report/
+│  └─ label/
 └─ images/                     # tabBar 图标、示例餐盘、logo
 ```
 
@@ -113,6 +115,7 @@ miniprogram/
 - 体重页只负责录入和画图；自然周平均、28 天变化由服务端 `shared/weight.ts` 计算，客户端不重复实现，避免两边口径漂移。
 - 周报页只负责展示；7 天达标、连续记录、上周对比和总结文案由服务端 `shared/weekly.ts` 计算，客户端不重复实现。
 - 提醒目标页只负责 `wx.requestSubscribeMessage` 授权和开关；可发送额度、模板 ID、发送时间由服务端决定，客户端不保存。
+- 营养标签页只负责拍照、展示和编辑；OCR、kJ→kcal、每份→每100g 的归一化全部在服务端 `server/services/label.ts` 完成。
 - 替换识别项时，小程序把原叫法和新食物提交到 `/api/aliases`；下次识别由服务端统一应用，客户端不保存别名表。
 - 自定义食物的营养值由用户填写，但保存餐次时仍由服务端按克数重算，并保留 `source: "custom"` 与 `foodId`。
 

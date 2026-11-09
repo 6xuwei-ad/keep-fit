@@ -116,6 +116,7 @@ test("小程序页面与组件脚本可以在微信运行时外壳下加载", ()
     "miniprogram/pages/goals/index.js",
     "miniprogram/pages/weight/index.js",
     "miniprogram/pages/report/index.js",
+    "miniprogram/pages/label/index.js",
     "miniprogram/custom-tab-bar/index.js",
     "miniprogram/components/progress-ring/index.js",
     "miniprogram/components/macro-bar/index.js",

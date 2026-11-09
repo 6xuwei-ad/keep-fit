@@ -43,6 +43,7 @@ import { signSession, verifySession } from "./lib/session.ts";
 import { FOOD_BY_ID, searchFoods, type FoodRecord } from "./data/foods.ts";
 import { assembleAnalysis } from "./services/analysis.ts";
 import { itemsTotal, makeFoodItem } from "./services/items.ts";
+import { recognizeLabel } from "./services/label.ts";
 import {
   REMINDER_KINDS,
   buildRemindersResponse,
@@ -1146,6 +1147,38 @@ export function createApp({ config, store }: CreateAppOptions) {
             ? (req.body.mealType as MealType)
             : inferMealType()
       });
+    })
+  );
+
+  app.post(
+    "/api/analyze/label",
+    (req, res, next) => {
+      upload.single("image")(req, res, (error) => {
+        if (error) next(error);
+        else next();
+      });
+    },
+    asyncRoute(async (req, res) => {
+      const deviceId = getDeviceId(req, config);
+      if (!checkAnalyzeLimit(deviceId)) {
+        throw new AppError(429, "识别次数有点多，休息 10 分钟再试", "RATE_LIMITED");
+      }
+      if (!req.file) throw new AppError(400, "请上传一张营养成分表照片", "IMAGE_REQUIRED");
+      if (!config.visionEnabled) {
+        throw new AppError(501, "营养标签识别需要配置视觉模型", "VISION_REQUIRED");
+      }
+
+      const detected = detectImage(req.file.buffer);
+      if (!detected) {
+        throw new AppError(415, "图片内容无法识别，请换一张 JPG、PNG 或 WebP 图片", "INVALID_IMAGE");
+      }
+
+      const label = await recognizeLabel(
+        { buffer: req.file.buffer, mimetype: detected.mime },
+        config
+      );
+      const saved = await saveImage(config.uploadDir, req.file.buffer, detected);
+      res.status(201).json({ label: { ...label, imageUrl: saved.url } });
     })
   );
 

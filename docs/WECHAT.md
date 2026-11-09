@@ -10,7 +10,7 @@
 | 能力 | 实现 |
 | --- | --- |
 | 原生工程 | `project.config.json` + `miniprogramRoot: miniprogram/` |
-| 页面 | 今日、确认份量、食物搜索、日记、目标、体重趋势、本周报告，共 7 页 |
+| 页面 | 今日、确认份量、食物搜索、日记、目标、体重趋势、本周报告、营养标签，共 8 页 |
 | tabBar | 3 个自定义悬浮 tab + 6 张 81×81 图标 |
 | 拍照/相册 | `wx.chooseMedia`（旧基础库回退 `wx.chooseImage`） |
 | 上传识别 | `wx.uploadFile` → `POST /api/analyze` |
@@ -26,6 +26,7 @@
 | 下拉刷新 | 首页、日记、目标、周报 |
 | 周报 | 7 天热量/蛋白质柱状图、达标天数、连续记录、上周对比、周总结 |
 | 订阅提醒 | 午餐/晚餐/周报/断签，目标页按项授权、续订与开关 |
+| 营养标签 | 拍营养成分表、识别每 100g、填克数、记到某一餐 |
 | 分享 | 分享卡片回到首页；周报分享不含体重和照片 |
 
 **验收状态：** 组件/页面脚本加载、WXML 结构、WXSS 语法、营养与建议一致性均通过自动检查；还需要在微信开发者工具中做一次真实编译与真机预览。常用错误见第 8 节。
@@ -224,7 +225,7 @@ WECHAT_MINIPROGRAM_STATE=formal
 ```text
 miniprogram/
 ├─ app.js                    # onLaunch: 设备 ID + 微信登录
-├─ app.json                  # 7 页面、custom tabBar、全局组件
+├─ app.json                  # 8 页面、custom tabBar、全局组件
 ├─ app.wxss                  # 设计 tokens 与公共样式
 ├─ custom-tab-bar/           # 悬浮液态玻璃底部导航
 ├─ config.js                 # API_BASE / USE_WECHAT_LOGIN
@@ -245,7 +246,8 @@ miniprogram/
 │  ├─ journal/
 │  ├─ goals/
 │  ├─ weight/
-│  └─ report/
+│  ├─ report/
+│  └─ label/
 └─ images/                   # tabBar 图标、logo、示例餐盘
 ```
 

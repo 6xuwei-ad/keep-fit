@@ -102,10 +102,10 @@ function bootstrapAuth() {
   });
 }
 
-function uploadImage(filePath) {
+function uploadFile(path, filePath) {
   return new Promise((resolve, reject) => {
     wx.uploadFile({
-      url: `${API_BASE}/api/analyze`,
+      url: `${API_BASE}${path}`,
       filePath,
       name: "image",
       header: authHeaders(),
@@ -120,6 +120,10 @@ function uploadImage(filePath) {
       }
     });
   });
+}
+
+function uploadImage(filePath) {
+  return uploadFile("/api/analyze", filePath);
 }
 
 function assetUrl(path) {
@@ -213,6 +217,9 @@ module.exports = {
   },
   analyzeImage(filePath) {
     return uploadImage(filePath);
+  },
+  analyzeLabel(filePath) {
+    return uploadFile("/api/analyze/label", filePath);
   },
   analyzeDemo() {
     return request("/api/analyze/demo", { method: "POST", data: {} });

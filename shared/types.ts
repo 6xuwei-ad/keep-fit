@@ -188,6 +188,25 @@ export interface AnalyzeResponse {
   suggestedMealType: MealType;
 }
 
+/** 包装食品营养成分表的 OCR 结果。per100g 已经按基准归一化。 */
+export interface LabelResult {
+  productName: string;
+  per100g: NutritionFacts;
+  basis: "100g" | "100ml";
+  servingSize: number;
+  servingUnit: "g" | "ml";
+  energyKj: number | null;
+  sodium: number | null;
+  confidence: number;
+  notice: string;
+  imageUrl: string;
+  engine: string;
+}
+
+export interface LabelAnalyzeResponse {
+  label: LabelResult;
+}
+
 export interface DayResponse {
   profile: Profile;
   summary: DaySummary;

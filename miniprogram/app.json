@@ -5,6 +5,7 @@
     "pages/goals/index",
     "pages/weight/index",
     "pages/report/index",
+    "pages/label/index",
     "pages/review/index",
     "pages/food-search/index"
   ],

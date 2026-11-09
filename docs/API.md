@@ -662,6 +662,69 @@ x-device-id: 8d1f0c2e-6b1a-4d5e-9f3c-2a7b8c9d0e1f
 
 ---
 
+## 营养标签 OCR
+
+### `POST /api/analyze/label`
+
+`multipart/form-data`，字段与 `/api/analyze` 相同：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `image` | File | 是 | 包装背面的营养成分表，JPG / PNG / WebP，≤8MB |
+
+服务端会校验图片魔数，调用视觉模型读取营养成分表，并统一归一化成每 100g / 100ml 的数值。识别成功后图片会保存到 `/uploads/`，用于这一餐的记录展示。
+
+成功：`201`
+
+```json
+{
+  "label": {
+    "productName": "燕麦片",
+    "per100g": {
+      "kcal": 286.8,
+      "protein": 8.2,
+      "carbs": 45.1,
+      "fat": 7.6,
+      "fiber": 2.1
+    },
+    "basis": "100g",
+    "servingSize": 100,
+    "servingUnit": "g",
+    "energyKj": 1200,
+    "sodium": 320,
+    "confidence": 0.98,
+    "notice": "数值来自包装标签，已按每 100g 归一化；请核对单位和份量。",
+    "imageUrl": "/uploads/1761900000000-a1b2c3d4.png",
+    "engine": "qwen3-vl-plus"
+  }
+}
+```
+
+口径：
+
+- **kJ → kcal**：标签只写能量 kJ 时按 `1 kcal = 4.184 kJ` 换算；同时有 kcal 时优先用 kcal。
+- **每份 → 每 100g**：`basis: "serving"` 时用 `servingSize` 折算；返回的 `per100g` 始终是每 100g 或每 100ml 的数值。
+- **液体**：`basis: "100ml"` 时按 `1ml ≈ 1g` 参与后续克数计算，页面会提示核对。
+- **钠**：`sodium` 单位是 mg，已经按同一基准归一化。
+- **置信度**：0–1；低于 0.7 时建议用户核对。
+- **notice**：模型或服务端给出的核对提示，直接展示给用户。
+
+错误：
+
+| 状态 | code | 场景 |
+| --- | --- | --- |
+| 400 | `IMAGE_REQUIRED` | 没有上传文件 |
+| 413 | `LIMIT_FILE_SIZE` | 超过 8MB |
+| 415 | `UNSUPPORTED_TYPE` / `INVALID_IMAGE` | MIME 或魔数不合法 |
+| 429 | `RATE_LIMITED` | 与 `/api/analyze` 共用 10 分钟 20 次配额 |
+| 501 | `VISION_REQUIRED` | 服务端未配置 `VISION_API_KEY` |
+| 502 | `LABEL_UPSTREAM` / `LABEL_SCHEMA` / `LABEL_EMPTY` | 模型失败或返回结构不完整 |
+| 504 | `LABEL_TIMEOUT` | 模型超时 |
+
+客户端拿到结果后，让用户确认每 100g 数值和实际吃的克数，再调用 `POST /api/custom-foods` 保存为自定义食物，最后用该 `foodId` 调用 `POST /api/meals`。这样服务端会保留标签营养值，不会用内置食物库覆盖。
+
+---
+
 ## 日记与餐食
 
 ### `GET /api/day?date=2026-10-31`

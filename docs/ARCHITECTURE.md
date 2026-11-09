@@ -121,7 +121,8 @@ flowchart LR
 │  │  ├─ journal/                # 日记录
 │  │  ├─ goals/                  # 身体数据与目标
 │  │  ├─ weight/                 # 体重趋势、周平均、目标同步
-│  │  └─ report/                 # 周报、连续记录、上周对比
+│  │  ├─ report/                 # 周报、连续记录、上周对比
+│  │  └─ label/                  # 营养标签 OCR、克数、记到某一餐
 │  ├─ utils/
 │  │  ├─ api.js                  # wx.request / uploadFile / 登录
 │  │  ├─ nutrition.js            # 与服务端共享公式
@@ -145,6 +146,7 @@ flowchart LR
 │  ├─ services/analysis.ts       # 评分与建议组装
 │  ├─ services/report.ts         # 周报数据装配（按天汇总 + 区间餐次）
 │  ├─ services/reminders.ts      # 提醒开关、授权额度、定时发送
+│  ├─ services/label.ts          # 营养成分表 OCR 与归一化
 │  ├─ services/wechat.ts         # access_token 缓存与订阅消息发送
 │  ├─ lib/image.ts               # 图片魔数、保存
 │  ├─ lib/session.ts             # HMAC 会话
@@ -198,6 +200,7 @@ ready()              等待微信登录 / 设备 ID 初始化
 | `goals` | 昵称、目标、身体数据、自动/手动目标、体重入口、订阅提醒授权 |
 | `weight` | 记录/修正体重、12 周折线、周平均、删除记录 |
 | `report` | 7 天热量/蛋白质柱状图、达标天数、连续记录、上周对比、周总结、分享 |
+| `label` | 拍营养成分表、确认每 100g 数值、填克数、记到某一餐 |
 
 `review` 是唯一持有“未保存识别结果”的页面。保存成功后把 `meal` 放入 `globalData.lastSaved`，再 `switchTab` 到日记。
 
@@ -280,6 +283,15 @@ review 页面保存 `baseGrams`（100% 基准）与当前 `grams`，因此：
 - 设备模式或未配置模板时，开关仍可见，但会明确提示不可用原因；
 - 授权弹窗必须由用户点击触发，不能在 `onShow` 或定时器里自动调用。
 
+### 5.10 营养标签 OCR
+
+- `pages/label/index` 负责拍照/相册、展示识别值和填写实际克数，不重复实现 OCR；
+- `services/label.ts` 要求模型只输出 JSON，服务端负责 kJ→kcal、每份→每100g、上下限和四舍五入；
+- 标签照片在识别成功后保存到 `/uploads/`，失败不落盘，避免垃圾文件；
+- 保存顺序是「先写自定义食物，再写 meal」：只有 `foodId` 以 `custom_` 开头时，`makeFoodItem` 才会保留标签营养值，不用内置食物库覆盖；
+- 同名自定义食物重复扫描会更新旧食物，不新增重复项；
+- 液体按 `1ml ≈ 1g`，页面文案明确提示，不假装是密度换算。
+
 ---
 
 ## 6. 后端架构
@@ -298,10 +310,12 @@ app.ts
        ├─ analyze → image 魔数 → saveImage → vision → analysis
        ├─ meals / templates → makeFoodItem → itemsTotal → Store.insertMeal
        ├─ reports/weekly → Store 区间汇总 → shared/weekly
-       └─ reminders → Store 设置/额度 → 微信订阅消息
+       ├─ reminders → Store 设置/额度 → 微信订阅消息
+       └─ analyze/label → 视觉模型 → 标签归一化 → 保存图片
   ↓
 services/                  纯业务
   ├─ vision.ts             外部模型边界
+  ├─ label.ts              营养成分表 OCR 与归一化
   ├─ items.ts              结果归一化
   ├─ analysis.ts           组装 + 评分 + 建议
   ├─ report.ts             周报数据装配
@@ -511,7 +525,38 @@ sequenceDiagram
 - 调度器是进程内单例；多实例部署前要加分布式锁或改成单独的 worker，否则可能重复发送；
 - 日志只打印 `kind` 与 errcode，不打印 openid 或 access_token。
 
-### 7.7 失败与降级矩阵
+### 7.7 营养标签 OCR
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 用户
+  participant W as 小程序
+  participant A as Express
+  participant V as 视觉模型
+  participant D as SQLite
+
+  U->>W: 拍包装营养成分表
+  W->>A: POST /api/analyze/label
+  A->>A: 图片魔数校验
+  A->>V: 营养成分表 prompt + image
+  V-->>A: JSON（产品名 / kJ / 各营养素）
+  A->>A: kJ→kcal、每份→每100g、上限校验
+  A->>D: 保存图片到 /uploads
+  A-->>W: label.per100g + imageUrl
+  U->>W: 修改数值 / 填实际克数
+  U->>W: 点「加入今日饮食」
+  W->>A: POST /api/custom-foods
+  A-->>W: custom_food.id
+  W->>A: POST /api/meals（foodId=custom_...）
+  A->>D: 重新计算并保存 meal + items
+```
+
+- 标签值不直接信任客户端；保存时仍由服务端按 `per100g × grams` 重算；
+- 先建自定义食物，是因为 `makeFoodItem` 只对 `custom_` 开头的 `foodId` 保留标签值；
+- 同名重复扫描走更新，不新增重复食物。
+
+### 7.8 失败与降级矩阵
 
 | 情况 | 行为 | 用户看到 |
 | --- | --- | --- |
@@ -837,6 +882,7 @@ DELETE /api/custom-foods/:id
 POST   /api/aliases
 POST   /api/analyze          multipart/form-data, field=image
 POST   /api/analyze/demo     内置示例餐盘
+POST   /api/analyze/label    营养成分表 OCR
 GET    /api/day?date=YYYY-MM-DD
 GET    /api/meals?date=YYYY-MM-DD
 POST   /api/meals
@@ -894,7 +940,7 @@ x-device-id: 8d1f0c2e-...
 ## 14. 测试
 
 ```text
-npm test          29 个测试
+npm test          33 个测试
 npm run typecheck  server/shared 类型检查
 npm run check:mini 小程序 JSON / JS / WXSS / 页面文件 / tabBar 图标
 npm run check     以上三项
@@ -909,6 +955,7 @@ npm run check     以上三项
 - 周报 7 天占位、热量/蛋白质达标、连续记录、上周对比与总结；
 - 周报接口的自然周归一、未来周校验与设备隔离；
 - 提醒开关、授权额度、发送窗口、失败不重试与 43101 清额度；
+- 营养标签 kJ→kcal、每份→每100g、100ml 与钠归一化；
 - 视觉模型 JSON 解析；
 - 会话签名、篡改、过期；
 - 完整 API 流程：识别 → 保存 → 模板 → 复制 → 删除 → 体重 → 自定义食物 → 别名；
@@ -979,8 +1026,8 @@ docker run --rm -p 8787:8787 \
 ### 16.4 体验
 
 - 周报目标版本化（历史周使用当时目标，而不是当前目标）；
-- 营养标签 OCR（比商品条码更适合中国零食/饮料）；
-- 长期订阅消息（如果未来类目符合微信要求，可替代一次性授权）。
+- 长期订阅消息（如果未来类目符合微信要求，可替代一次性授权）；
+- 标签 OCR 的条码/商品库兜底，减少手工核对。
 
 ---
 
@@ -991,5 +1038,6 @@ docker run --rm -p 8787:8787 \
 - 设备模式无法跨设备同步；微信登录后也不会自动归并旧设备数据。
 - 删除餐次不清理图片文件。
 - 微信订阅消息受“一次授权一条”限制，四条提醒需要用户分别授权/续订。
+- 营养标签 OCR 会受反光、折痕和模糊影响；液体按 1ml≈1g，不保证密度准确。
 - 单实例 SQLite，不适合多实例横向扩展。
 - 小程序审核需要真实 AppID、隐私保护指引与合法域名。

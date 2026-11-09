@@ -97,6 +97,17 @@
   margin-top: 18rpx;
 }
 
+.hero-links {
+  display: flex;
+  align-items: center;
+}
+
+.hero-sep {
+  margin: 0 10rpx;
+  color: #b0b5ab;
+  font-size: 18rpx;
+}
+
 .hero-link {
   color: #31473b;
   font-size: 21rpx;

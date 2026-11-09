@@ -276,6 +276,10 @@ Page({
     this.takePhoto("album");
   },
 
+  onLabel() {
+    wx.navigateTo({ url: "/pages/label/index" });
+  },
+
   analyzeFile(filePath) {
     wx.showLoading({ title: "正在看懂这一餐…", mask: true });
     return compressPhoto(filePath)

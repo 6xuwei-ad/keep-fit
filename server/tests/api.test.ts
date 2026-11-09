@@ -133,6 +133,29 @@ test("识别、保存、汇总、删除的完整 API 流程", async (t) => {
   assert.ok(analysis.totals.kcal > 300);
   assert.equal(analysis.advice.length, 3);
 
+  const labelMissingImage = await fetch(`${base}/api/analyze/label`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE }
+  });
+  assert.equal(labelMissingImage.status, 400);
+  assert.equal(
+    ((await labelMissingImage.json()) as { code: string }).code,
+    "IMAGE_REQUIRED"
+  );
+
+  const labelForm = new FormData();
+  labelForm.append("image", new Blob([image], { type: "image/jpeg" }), "label.jpg");
+  const labelWithoutVision = await fetch(`${base}/api/analyze/label`, {
+    method: "POST",
+    headers: { "x-device-id": DEVICE },
+    body: labelForm
+  });
+  assert.equal(labelWithoutVision.status, 501);
+  assert.equal(
+    ((await labelWithoutVision.json()) as { code: string }).code,
+    "VISION_REQUIRED"
+  );
+
   const mealPayload = {
     name: analysis.dishName,
     mealType: "lunch",

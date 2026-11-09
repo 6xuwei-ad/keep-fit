@@ -38,8 +38,14 @@
       </button>
     </view>
     <view class="hero-sub">
-      <view class="hero-link" bindtap="onDemo">
-        先看看示例餐盘 <text class="chev">↗</text>
+      <view class="hero-links">
+        <view class="hero-link" bindtap="onDemo">
+          示例餐盘 <text class="chev">↗</text>
+        </view>
+        <text class="hero-sep">·</text>
+        <view class="hero-link" bindtap="onLabel">
+          营养标签 <text class="chev">↗</text>
+        </view>
       </view>
       <text class="privacy">照片仅用于本次分析</text>
     </view>

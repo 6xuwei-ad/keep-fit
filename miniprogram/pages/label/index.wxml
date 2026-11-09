@@ -1,0 +1,125 @@
+<view class="label-page">
+  <view class="page-head">
+    <text class="eyebrow">NUTRITION LABEL</text>
+    <view class="page-title">拍标签，<br />不用手抄。</view>
+    <view class="page-sub">对准包装背面的营养成分表，识别每 100g 的热量和三大营养素，再按你实际吃的量记录。</view>
+  </view>
+
+  <view wx:if="{{!result && !analyzing}}" class="card scan-card">
+    <view class="scan-visual">
+      <view class="scan-icon">🏷️</view>
+      <view class="scan-corner scan-corner--tl"></view>
+      <view class="scan-corner scan-corner--tr"></view>
+      <view class="scan-corner scan-corner--bl"></view>
+      <view class="scan-corner scan-corner--br"></view>
+    </view>
+    <view class="scan-title">让表格占满画面</view>
+    <view class="scan-copy">保持包装平整、光线均匀，避开反光和手指。只识别营养成分表，不会读配料表。</view>
+    <button class="btn btn-primary btn-full scan-btn" bindtap="onCamera">拍照读取</button>
+    <button class="btn btn-soft btn-full scan-btn" bindtap="onAlbum">从相册选择</button>
+    <view wx:if="{{error}}" class="form-error">{{error}}</view>
+  </view>
+
+  <view wx:elif="{{analyzing}}" class="card analyzing-card">
+    <view class="analyzing-dot"></view>
+    <view class="analyzing-title">正在读营养成分表</view>
+    <view class="analyzing-copy">识别 kJ、kcal、蛋白质、碳水、脂肪和膳食纤维，大约需要几秒。</view>
+  </view>
+
+  <block wx:else>
+    <view class="card result-card">
+      <view class="result-image-wrap">
+        <image class="result-image" src="{{imageUrl}}" mode="aspectFill"></image>
+        <text class="result-badge">识别置信度 {{confidencePct}}%</text>
+      </view>
+
+      <view class="result-head">
+        <text class="eyebrow">FROM THE LABEL</text>
+        <text class="basis-pill">{{basisText}}</text>
+      </view>
+
+      <view class="field">
+        <text class="field-label">产品名称</text>
+        <input class="name-input" value="{{productName}}" maxlength="40" bindinput="onNameInput" placeholder="包装食品" />
+      </view>
+
+      <view class="nutrient-grid">
+        <view class="nutrient-field">
+          <text class="nutrient-label">热量</text>
+          <view class="nutrient-input-wrap">
+            <input class="nutrient-input" type="digit" value="{{per100g.kcal}}" data-key="kcal" bindinput="onNutrientInput" />
+            <text class="nutrient-unit">kcal</text>
+          </view>
+        </view>
+        <view class="nutrient-field">
+          <text class="nutrient-label">蛋白质</text>
+          <view class="nutrient-input-wrap">
+            <input class="nutrient-input" type="digit" value="{{per100g.protein}}" data-key="protein" bindinput="onNutrientInput" />
+            <text class="nutrient-unit">g</text>
+          </view>
+        </view>
+        <view class="nutrient-field">
+          <text class="nutrient-label">碳水</text>
+          <view class="nutrient-input-wrap">
+            <input class="nutrient-input" type="digit" value="{{per100g.carbs}}" data-key="carbs" bindinput="onNutrientInput" />
+            <text class="nutrient-unit">g</text>
+          </view>
+        </view>
+        <view class="nutrient-field">
+          <text class="nutrient-label">脂肪</text>
+          <view class="nutrient-input-wrap">
+            <input class="nutrient-input" type="digit" value="{{per100g.fat}}" data-key="fat" bindinput="onNutrientInput" />
+            <text class="nutrient-unit">g</text>
+          </view>
+        </view>
+        <view class="nutrient-field">
+          <text class="nutrient-label">膳食纤维</text>
+          <view class="nutrient-input-wrap">
+            <input class="nutrient-input" type="digit" value="{{per100g.fiber}}" data-key="fiber" bindinput="onNutrientInput" />
+            <text class="nutrient-unit">g</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="intake-row">
+        <view class="intake-copy">
+          <text class="field-label">实际吃了多少</text>
+          <text class="intake-hint">{{basisText}} · 按实际入口量算</text>
+        </view>
+        <view class="intake-input-wrap">
+          <input class="intake-input" type="digit" value="{{grams}}" bindinput="onGramsInput" />
+          <text class="intake-unit">{{intakeUnit}}</text>
+        </view>
+        <button wx:if="{{servingSize}}" class="serving-btn" bindtap="onUseServing">一份 {{servingSize}}{{servingUnit}}</button>
+      </view>
+
+      <view class="total-strip">
+        <text class="total-kcal">{{total.kcal}}<text> kcal</text></text>
+        <text class="total-text">{{nutritionText}}</text>
+      </view>
+
+      <view class="meal-block">
+        <text class="field-label">记到哪一餐</text>
+        <view class="meal-options">
+          <view
+            wx:for="{{mealTypes}}"
+            wx:key="id"
+            class="meal-option {{item.active ? 'active' : ''}}"
+            data-type="{{item.id}}"
+            bindtap="onMealType"
+          >{{item.label}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{notice}}" class="notice">{{notice}}</view>
+      <view wx:if="{{error}}" class="form-error">{{error}}</view>
+
+      <button class="btn btn-primary btn-full save-btn" bindtap="onSave" disabled="{{saving}}">
+        {{saving ? '记录中…' : '加入今日饮食'}}
+      </button>
+      <button class="btn btn-soft btn-full reset-btn" bindtap="onReset">重新拍一张</button>
+    </view>
+
+    <view class="label-foot">会同时保存到「我的食物」，下次可以直接搜索。</view>
+  </block>
+</view>

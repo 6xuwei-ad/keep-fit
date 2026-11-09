@@ -1,0 +1,401 @@
+.label-page {
+  padding: 26rpx 28rpx 60rpx;
+}
+
+.page-head {
+  padding: 4rpx 4rpx 22rpx;
+}
+
+.page-title {
+  margin-top: 10rpx;
+  font-size: 60rpx;
+  font-weight: 700;
+  line-height: 1.06;
+  letter-spacing: -4rpx;
+}
+
+.page-sub {
+  max-width: 590rpx;
+  margin-top: 14rpx;
+  color: #70786f;
+  font-size: 22rpx;
+  line-height: 1.65;
+}
+
+.card {
+  margin-top: 16rpx;
+  padding: 26rpx 24rpx;
+}
+
+.scan-card {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 30rpx 26rpx 26rpx;
+  text-align: center;
+}
+
+.scan-visual {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 230rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx dashed #d8d5c6;
+  border-radius: 26rpx;
+  background: #f8f5ea;
+}
+
+.scan-icon {
+  font-size: 76rpx;
+}
+
+.scan-corner {
+  position: absolute;
+  width: 34rpx;
+  height: 34rpx;
+  border-color: #1b4b37;
+  border-style: solid;
+}
+
+.scan-corner--tl {
+  top: 16rpx;
+  left: 16rpx;
+  border-width: 3rpx 0 0 3rpx;
+  border-radius: 8rpx 0 0 0;
+}
+
+.scan-corner--tr {
+  top: 16rpx;
+  right: 16rpx;
+  border-width: 3rpx 3rpx 0 0;
+  border-radius: 0 8rpx 0 0;
+}
+
+.scan-corner--bl {
+  bottom: 16rpx;
+  left: 16rpx;
+  border-width: 0 0 3rpx 3rpx;
+  border-radius: 0 0 0 8rpx;
+}
+
+.scan-corner--br {
+  right: 16rpx;
+  bottom: 16rpx;
+  border-width: 0 3rpx 3rpx 0;
+  border-radius: 0 0 8rpx 0;
+}
+
+.scan-title {
+  margin-top: 24rpx;
+  color: #15271f;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.scan-copy {
+  max-width: 540rpx;
+  margin-top: 8rpx;
+  color: #70786f;
+  font-size: 19rpx;
+  line-height: 1.65;
+}
+
+.scan-btn {
+  margin-top: 18rpx;
+}
+
+.analyzing-card {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 60rpx 30rpx;
+  text-align: center;
+}
+
+.analyzing-dot {
+  width: 46rpx;
+  height: 46rpx;
+  border: 4rpx solid #deddcf;
+  border-top-color: #1b4b37;
+  border-radius: 50%;
+  animation: label-spin 800ms linear infinite;
+}
+
+@keyframes label-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.analyzing-title {
+  margin-top: 20rpx;
+  color: #15271f;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.analyzing-copy {
+  max-width: 480rpx;
+  margin-top: 8rpx;
+  color: #70786f;
+  font-size: 18rpx;
+  line-height: 1.6;
+}
+
+.result-card {
+  padding: 22rpx 24rpx 24rpx;
+}
+
+.result-image-wrap {
+  position: relative;
+  overflow: hidden;
+  height: 230rpx;
+  border-radius: 22rpx;
+  background: #f3f1e8;
+}
+
+.result-image {
+  width: 100%;
+  height: 100%;
+}
+
+.result-badge {
+  position: absolute;
+  right: 12rpx;
+  bottom: 12rpx;
+  padding: 4rpx 12rpx;
+  color: #fffdf7;
+  border-radius: 999rpx;
+  background: rgba(16, 49, 38, 0.72);
+  font-size: 15rpx;
+}
+
+.result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+}
+
+.basis-pill {
+  padding: 4rpx 12rpx;
+  color: #1b4b37;
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 15rpx;
+  font-weight: 600;
+}
+
+.field {
+  margin-top: 14rpx;
+}
+
+.field-label {
+  display: block;
+  color: #70786f;
+  font-size: 17rpx;
+}
+
+.name-input {
+  height: 54rpx;
+  margin-top: 4rpx;
+  color: #15271f;
+  border-bottom: 1rpx solid #deddcf;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.nutrient-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 16rpx;
+}
+
+.nutrient-field {
+  width: 48.5%;
+  margin-bottom: 12rpx;
+  padding: 12rpx 14rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 16rpx;
+  background: #f8f5ea;
+}
+
+.nutrient-label {
+  display: block;
+  color: #8d948d;
+  font-size: 16rpx;
+}
+
+.nutrient-input-wrap {
+  display: flex;
+  align-items: baseline;
+  margin-top: 2rpx;
+}
+
+.nutrient-input {
+  min-width: 0;
+  flex: 1;
+  color: #15271f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.nutrient-unit {
+  margin-left: 4rpx;
+  color: #969c93;
+  font-size: 15rpx;
+}
+
+.intake-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(21, 39, 31, 0.07);
+}
+
+.intake-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.intake-hint {
+  margin-top: 2rpx;
+  color: #969c93;
+  font-size: 15rpx;
+}
+
+.intake-input-wrap {
+  display: flex;
+  width: 150rpx;
+  height: 64rpx;
+  align-items: center;
+  padding: 0 14rpx;
+  border: 1rpx solid #deddcf;
+  border-radius: 16rpx;
+  background: #fffdf7;
+}
+
+.intake-input {
+  min-width: 0;
+  flex: 1;
+  color: #15271f;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.intake-unit {
+  margin-left: 4rpx;
+  color: #969c93;
+  font-size: 16rpx;
+}
+
+.serving-btn {
+  width: 100%;
+  height: 54rpx;
+  margin-top: 10rpx;
+  color: #1b4b37;
+  border: 1rpx solid rgba(27, 75, 55, 0.16);
+  border-radius: 999rpx;
+  background: #eef7c8;
+  font-size: 17rpx;
+  line-height: 54rpx;
+  text-align: center;
+}
+
+.total-strip {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 16rpx;
+  background: #103126;
+}
+
+.total-kcal {
+  color: #d9ef7c;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 36rpx;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.total-kcal text {
+  color: rgba(255, 253, 247, 0.52);
+  font-family: -apple-system, sans-serif;
+  font-size: 15rpx;
+}
+
+.total-text {
+  max-width: 390rpx;
+  color: rgba(255, 253, 247, 0.68);
+  font-size: 15rpx;
+  text-align: right;
+}
+
+.meal-block {
+  margin-top: 18rpx;
+}
+
+.meal-options {
+  display: flex;
+  margin-top: 8rpx;
+}
+
+.meal-option {
+  flex: 1;
+  height: 64rpx;
+  margin-right: 8rpx;
+  color: #70786f;
+  border: 1rpx solid #deddcf;
+  border-radius: 999rpx;
+  background: #f8f5ea;
+  font-size: 20rpx;
+  line-height: 64rpx;
+  text-align: center;
+}
+
+.meal-option:last-child {
+  margin-right: 0;
+}
+
+.meal-option.active {
+  color: #fbfdf0;
+  border-color: #1b4b37;
+  background: #1b4b37;
+}
+
+.notice {
+  margin-top: 14rpx;
+  padding: 10rpx 14rpx;
+  color: #7d6a3c;
+  border-radius: 14rpx;
+  background: rgba(245, 221, 160, 0.28);
+  font-size: 16rpx;
+  line-height: 1.55;
+}
+
+.save-btn {
+  margin-top: 18rpx;
+}
+
+.reset-btn {
+  margin-top: 12rpx;
+}
+
+.label-foot {
+  margin-top: 18rpx;
+  color: #969c93;
+  font-size: 16rpx;
+  line-height: 1.6;
+  text-align: center;
+}
